@@ -760,7 +760,6 @@ POST /agendamentos
 
 **Versão da API:** 1.0  
 **Última Atualização:** 22/07/2025  
-**Desenvolvido por:** Manus AI
 
 
 
