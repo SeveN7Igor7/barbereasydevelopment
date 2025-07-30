@@ -3,9 +3,7 @@ const router = express.Router();
 const barbeariaController = require('./barbearia.controller');
 
 router.post('/', barbeariaController.createBarbearia);
-
-// Se quiser outras rotas, exemplo:
-// router.get('/', barbeariaController.listarBarbearias);
-// router.get('/:id', barbeariaController.getBarbeariaById);
+router.get('/:id', barbeariaController.getBarbeariaById);
+router.post('/login', barbeariaController.loginBarbearia);
 
 module.exports = router;

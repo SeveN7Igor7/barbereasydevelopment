@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ArrowLeft, LogIn, Mail, Lock, Eye, EyeOff, Scissors } from 'lucide-react';
+import { apiService, Barbearia } from '../services/api';
 
 interface BarbershopLoginPageProps {
   onBack: () => void;
-  onLogin: () => void;
+  onLogin: (barbearia: Barbearia) => void;
 }
 
 const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLogin }) => {
@@ -12,20 +13,43 @@ const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLog
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você integraria com o backend para fazer login da barbearia
-    console.log('Dados do login da barbearia:', formData);
-    // Redirecionar para o dashboard da barbearia após login bem-sucedido
-    onLogin();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (!formData.email || !formData.password) {
+        throw new Error('Email e senha são obrigatórios');
+      }
+
+      const response = await apiService.loginBarbearia({
+        email: formData.email,
+        senha: formData.password
+      });
+
+      // Salvar dados da barbearia no localStorage para persistir a sessão
+      localStorage.setItem('barbeariaLogada', JSON.stringify(response.barbearia));
+      
+      // Chamar callback de login com os dados da barbearia
+      onLogin(response.barbearia);
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -60,6 +84,12 @@ const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLog
               </p>
             </div>
 
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -73,7 +103,8 @@ const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLog
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
+                    disabled={isLoading}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors disabled:opacity-50"
                     placeholder="barbearia@email.com"
                   />
                 </div>
@@ -91,13 +122,15 @@ const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLog
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
+                    disabled={isLoading}
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors disabled:opacity-50"
                     placeholder="Sua senha"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -106,19 +139,28 @@ const BarbershopLoginPage: React.FC<BarbershopLoginPageProps> = ({ onBack, onLog
 
               <div className="flex items-center justify-between">
                 <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-yellow-400 focus:ring-yellow-400" />
+                  <input 
+                    type="checkbox" 
+                    disabled={isLoading}
+                    className="rounded border-gray-300 text-yellow-400 focus:ring-yellow-400 disabled:opacity-50" 
+                  />
                   <span className="ml-2 text-sm text-gray-600">Lembrar de mim</span>
                 </label>
-                <button type="button" className="text-sm text-yellow-600 hover:text-yellow-700">
+                <button 
+                  type="button" 
+                  disabled={isLoading}
+                  className="text-sm text-yellow-600 hover:text-yellow-700 disabled:opacity-50"
+                >
                   Esqueceu a senha?
                 </button>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-yellow-400 text-black py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-300"
+                disabled={isLoading}
+                className="w-full bg-yellow-400 text-black py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Entrar no Painel
+                {isLoading ? 'Entrando...' : 'Entrar no Painel'}
               </button>
             </form>
 

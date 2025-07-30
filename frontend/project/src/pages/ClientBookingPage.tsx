@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Clock, User, Scissors, Star, MapPin, Phone, Instagram, Facebook } from 'lucide-react';
+import { apiService, Barbearia, Barbeiro, Servico, Cliente } from '../services/api';
 
 interface ClientBookingPageProps {
   onBack: () => void;
@@ -7,11 +8,23 @@ interface ClientBookingPageProps {
 
 const ClientBookingPage: React.FC<ClientBookingPageProps> = ({ onBack }) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedService, setSelectedService] = useState<string>('');
-  const [selectedProfessional, setSelectedProfessional] = useState<string>('');
+  const [selectedService, setSelectedService] = useState<Servico | null>(null);
+  const [selectedProfessional, setSelectedProfessional] = useState<Barbeiro | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [clientData, setClientData] = useState({
+    nome: '',
+    telefone: ''
+  });
+  
+  // Estados para dados da API
+  const [barbearias, setBarbearias] = useState<Barbearia[]>([]);
+  const [selectedBarbearia, setSelectedBarbearia] = useState<Barbearia | null>(null);
+  const [barbeiros, setBarbeiros] = useState<Barbeiro[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Dados da barbearia fictícia
+  // Dados fictícios da barbearia para demonstração
   const barbershop = {
     name: 'Barbearia Elite Style',
     rating: 4.9,
@@ -25,437 +38,377 @@ const ClientBookingPage: React.FC<ClientBookingPageProps> = ({ onBack }) => {
     openHours: 'Segunda à Sábado: 09:00 - 19:00'
   };
 
-  const services = [
-    { id: 'corte-simples', name: 'Corte Simples', duration: '30 min', price: 'R$ 40', description: 'Corte tradicional com acabamento' },
-    { id: 'corte-premium', name: 'Corte Premium', duration: '45 min', price: 'R$ 60', description: 'Corte moderno com lavagem e finalização' },
-    { id: 'barba', name: 'Barba Completa', duration: '25 min', price: 'R$ 30', description: 'Aparar, desenhar e finalizar a barba' },
-    { id: 'corte-barba', name: 'Corte + Barba', duration: '60 min', price: 'R$ 80', description: 'Pacote completo com desconto especial' },
-    { id: 'sobrancelha', name: 'Sobrancelha', duration: '15 min', price: 'R$ 20', description: 'Aparar e desenhar sobrancelhas' },
-    { id: 'tratamento', name: 'Tratamento Capilar', duration: '40 min', price: 'R$ 70', description: 'Hidratação e tratamento do couro cabeludo' },
-    { id: 'relaxamento', name: 'Relaxamento + Massagem', duration: '50 min', price: 'R$ 90', description: 'Relaxamento capilar com massagem relaxante' },
-    { id: 'bigode', name: 'Bigode', duration: '15 min', price: 'R$ 15', description: 'Aparar e modelar bigode' }
-  ];
+  // Carregar dados da primeira barbearia disponível (simulação)
+  useEffect(() => {
+    loadBarbeariaData();
+  }, []);
 
-  const professionals = [
-    { 
-      id: 'carlos', 
-      name: 'Carlos Mendes', 
-      rating: 4.9, 
-      specialty: 'Cortes Modernos & Degradês',
-      experience: '8 anos de experiência',
-      description: 'Especialista em cortes modernos e degradês perfeitos'
-    },
-    { 
-      id: 'rafael', 
-      name: 'Rafael Santos', 
-      rating: 4.8, 
-      specialty: 'Barbas Clássicas & Bigodes',
-      experience: '6 anos de experiência',
-      description: 'Mestre em barbas clássicas e modelagem de bigodes'
-    },
-    { 
-      id: 'bruno', 
-      name: 'Bruno Silva', 
-      rating: 4.9, 
-      specialty: 'Cortes Clássicos & Tratamentos',
-      experience: '10 anos de experiência',
-      description: 'Especialista em cortes clássicos e tratamentos capilares'
-    },
-    { 
-      id: 'diego', 
-      name: 'Diego Costa', 
-      rating: 4.7, 
-      specialty: 'Cortes Infantis & Relaxamento',
-      experience: '5 anos de experiência',
-      description: 'Especialista em cortes infantis e técnicas de relaxamento'
-    }
-  ];
-
-  // Gerar próximos 14 dias (excluindo domingos)
-  const generateDates = () => {
-    const dates = [];
-    const today = new Date();
-    let daysAdded = 0;
-    let currentDay = 0;
-    
-    while (daysAdded < 14) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + currentDay);
+  const loadBarbeariaData = async () => {
+    setIsLoading(true);
+    try {
+      // Para demonstração, vamos usar a barbearia ID 1
+      const barbeariaId = 1;
       
-      // Pular domingos (0 = domingo)
-      if (date.getDay() !== 0) {
-        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        
-        dates.push({
-          date: date.toISOString().split('T')[0],
-          dayName: dayNames[date.getDay()],
-          dayNumber: date.getDate(),
-          month: monthNames[date.getMonth()],
-          isToday: currentDay === 0,
-          isSaturday: date.getDay() === 6
-        });
-        daysAdded++;
-      }
-      currentDay++;
+      const [barbeiros, servicos] = await Promise.all([
+        apiService.getBarbeirosByBarbearia(barbeariaId),
+        apiService.getServicosByBarbearia(barbeariaId)
+      ]);
+
+      setBarbeiros(barbeiros);
+      setServicos(servicos);
+    } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
+      setError('Erro ao carregar dados da barbearia');
+    } finally {
+      setIsLoading(false);
     }
-    
-    return dates;
   };
 
-  const availableDates = generateDates();
+  const availableTimes = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
+  ];
 
-  // Horários disponíveis
-  const generateTimeSlots = () => {
-    const slots = [];
-    const startHour = 9;
-    const endHour = 19;
-    
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute of [0, 30]) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        // Simular disponibilidade (80% dos horários disponíveis)
-        const isAvailable = Math.random() > 0.2;
-        slots.push({ time, isAvailable });
-      }
+  const formatPhone = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('55')) {
+      return cleaned;
+    } else {
+      return '55' + cleaned;
     }
-    
-    return slots;
   };
 
-  const timeSlots = generateTimeSlots();
-
-  const handleBooking = () => {
-    if (!selectedDate || !selectedService || !selectedProfessional || !selectedTime) {
-      alert('Por favor, selecione todos os campos obrigatórios.');
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedService || !selectedProfessional || !selectedTime || !clientData.nome || !clientData.telefone) {
+      setError('Por favor, preencha todos os campos');
       return;
     }
 
-    const selectedServiceData = services.find(s => s.id === selectedService);
-    const selectedProfessionalData = professionals.find(p => p.id === selectedProfessional);
-    const selectedDateData = availableDates.find(d => d.date === selectedDate);
+    setIsLoading(true);
+    setError('');
 
-    const bookingData = {
-      barbershop: barbershop.name,
-      service: selectedServiceData?.name,
-      professional: selectedProfessionalData?.name,
-      date: `${selectedDateData?.dayNumber}/${selectedDateData?.month}`,
-      time: selectedTime,
-      price: selectedServiceData?.price
-    };
+    try {
+      // Criar cliente
+      const cliente = await apiService.createCliente({
+        nome: clientData.nome,
+        telefone: formatPhone(clientData.telefone),
+        barbeariaId: 1 // Para demonstração, usando barbearia ID 1
+      });
 
-    console.log('Dados do agendamento:', bookingData);
-    alert(`Agendamento confirmado!\n\nBarbearia: ${barbershop.name}\nServiço: ${selectedServiceData?.name}\nProfissional: ${selectedProfessionalData?.name}\nData: ${selectedDateData?.dayNumber}/${selectedDateData?.month}\nHorário: ${selectedTime}\nValor: ${selectedServiceData?.price}\n\nVocê receberá uma confirmação via WhatsApp!`);
-    
-    // Reset form
-    setSelectedDate('');
-    setSelectedService('');
-    setSelectedProfessional('');
-    setSelectedTime('');
+      // Criar agendamento
+      const dataHora = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+      
+      const agendamento = await apiService.createAgendamento({
+        clienteId: cliente.id,
+        barbeiroId: selectedProfessional.id,
+        barbeariaId: 1,
+        dataHora,
+        nomeServico: selectedService.nome,
+        precoServico: selectedService.preco,
+        status: 'AGENDAMENTO_PROGRAMADO'
+      });
+
+      alert(`Agendamento realizado com sucesso! 
+      
+Detalhes:
+- Cliente: ${cliente.nome}
+- Serviço: ${selectedService.nome}
+- Barbeiro: ${selectedProfessional.nome}
+- Data: ${new Date(dataHora).toLocaleDateString('pt-BR')}
+- Horário: ${selectedTime}
+- Valor: R$ ${selectedService.preco.toFixed(2)}
+
+Você receberá uma confirmação via WhatsApp em breve!`);
+      
+      onBack();
+    } catch (error: any) {
+      console.error('Erro ao realizar agendamento:', error);
+      setError(error.message || 'Erro ao realizar agendamento. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const renderStars = (rating: number) => {
+  const getMinDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
+  const getMaxDate = () => {
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 30); // 30 dias no futuro
+    return maxDate.toISOString().split('T')[0];
+  };
+
+  if (isLoading && servicos.length === 0) {
     return (
-      <div className="flex space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-4 w-4 ${
-              star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-            }`}
-          />
-        ))}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando dados da barbearia...</p>
+        </div>
       </div>
     );
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={onBack}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Voltar</span>
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">Agendar Serviço</h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">João Silva</span>
-              <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                <span className="text-black font-bold text-sm">JS</span>
-              </div>
-            </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onBack}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>Voltar</span>
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Agendar Horário</h1>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Informações da Barbearia */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="lg:col-span-2">
-              <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Informações da Barbearia */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="md:w-1/3">
                 <img
                   src={barbershop.image}
                   alt={barbershop.name}
-                  className="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-lg shadow-md"
+                  className="w-full h-48 object-cover rounded-lg"
                 />
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 space-y-2 sm:space-y-0">
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{barbershop.name}</h2>
-                    <div className="flex items-center space-x-1 self-start sm:self-auto">
-                      {renderStars(barbershop.rating)}
-                      <span className="text-sm text-gray-600 ml-1">({barbershop.rating})</span>
-                    </div>
+              </div>
+              <div className="md:w-2/3">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900">{barbershop.name}</h2>
+                  <div className="flex items-center space-x-1">
+                    <Star className="h-5 w-5 text-yellow-400 fill-current" />
+                    <span className="text-gray-600">{barbershop.rating}</span>
                   </div>
-                  <p className="text-sm sm:text-base text-gray-600 mb-4">{barbershop.description}</p>
-                  <div className="space-y-2 text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-xs sm:text-sm">{barbershop.address}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4" />
-                      <span className="text-xs sm:text-sm">{barbershop.phone}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span className="text-xs sm:text-sm">{barbershop.openHours}</span>
-                    </div>
+                </div>
+                <p className="text-gray-600 mb-4">{barbershop.description}</p>
+                
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-4 w-4" />
+                    <span>{barbershop.address}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Phone className="h-4 w-4" />
+                    <span>{barbershop.phone}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4" />
+                    <span>{barbershop.openHours}</span>
+                  </div>
+                </div>
+
+                <div className="flex space-x-4 mt-4">
+                  <div className="flex items-center space-x-1 text-pink-600">
+                    <Instagram className="h-4 w-4" />
+                    <span className="text-sm">{barbershop.instagram}</span>
+                  </div>
+                  <div className="flex items-center space-x-1 text-blue-600">
+                    <Facebook className="h-4 w-4" />
+                    <span className="text-sm">{barbershop.facebook}</span>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Formulário de Agendamento */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">Dados do Agendamento</h3>
             
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Siga-nos nas redes</h3>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
-                  <Instagram className="h-4 w-4 text-pink-500" />
-                  <span>{barbershop.instagram}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Dados do Cliente */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">Seus Dados</h4>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome Completo
+                  </label>
+                  <input
+                    type="text"
+                    value={clientData.nome}
+                    onChange={(e) => setClientData(prev => ({ ...prev, nome: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
+                    placeholder="Seu nome completo"
+                    required
+                  />
                 </div>
-                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
-                  <Facebook className="h-4 w-4 text-blue-500" />
-                  <span>{barbershop.facebook}</span>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Telefone/WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={clientData.telefone}
+                    onChange={(e) => setClientData(prev => ({ ...prev, telefone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
+                    placeholder="(11) 99999-9999"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Você receberá confirmação via WhatsApp
+                  </p>
                 </div>
               </div>
-              <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-700 font-medium">
-                  📱 Confirmação via WhatsApp: {barbershop.whatsapp}
-                </p>
+
+              {/* Seleção de Data e Horário */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">Data e Horário</h4>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data
+                  </label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={getMinDate()}
+                    max={getMaxDate()}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Horário
+                  </label>
+                  <select
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
+                    required
+                  >
+                    <option value="">Selecione um horário</option>
+                    {availableTimes.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-          {/* Seleção de Data */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-yellow-400" />
-              <span>Escolha a Data</span>
-            </h3>
-            <div className="grid grid-cols-7 gap-1 sm:gap-2">
-              {availableDates.map((date) => (
-                <button
-                  key={date.date}
-                  onClick={() => setSelectedDate(date.date)}
-                  className={`p-2 sm:p-3 rounded-lg text-center transition-colors ${
-                    selectedDate === date.date
-                      ? 'bg-yellow-400 text-black'
-                      : date.isSaturday
-                      ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="text-xs font-medium">{date.dayName}</div>
-                  <div className="text-sm sm:text-lg font-bold">{date.dayNumber}</div>
-                  <div className="text-xs">{date.month}</div>
-                  {date.isToday && (
-                    <div className="text-xs text-yellow-600 font-medium">Hoje</div>
-                  )}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              * Fechado aos domingos
-            </p>
-          </div>
-
-          {/* Seleção de Horário */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-yellow-400" />
-              <span>Escolha o Horário</span>
-            </h3>
-            {!selectedDate ? (
-              <p className="text-gray-500 text-center py-6 sm:py-8">
-                Selecione uma data primeiro
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot.time}
-                    onClick={() => setSelectedTime(slot.time)}
-                    disabled={!slot.isAvailable}
-                    className={`p-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                      selectedTime === slot.time
-                        ? 'bg-yellow-400 text-black'
-                        : slot.isAvailable
-                        ? 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+            {/* Seleção de Serviço */}
+            <div className="mt-8">
+              <h4 className="font-medium text-gray-900 mb-4">Escolha o Serviço</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {servicos.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => setSelectedService(service)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedService?.id === service.id
+                        ? 'border-yellow-400 bg-yellow-50'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {slot.time}
-                  </button>
+                    <h5 className="font-medium text-gray-900">{service.nome}</h5>
+                    <p className="text-sm text-gray-600 mt-1">{service.duracaoMin} min</p>
+                    <p className="text-lg font-semibold text-yellow-600 mt-2">
+                      R$ {service.preco.toFixed(2)}
+                    </p>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mt-6 sm:mt-8">
-          {/* Seleção de Serviço */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Scissors className="h-5 w-5 text-yellow-400" />
-              <span>Escolha o Serviço</span>
-            </h3>
-            <div className="space-y-3">
-              {services.map((service) => (
-                <button
-                  key={service.id}
-                  onClick={() => setSelectedService(service.id)}
-                  className={`w-full p-3 sm:p-4 rounded-lg border-2 text-left transition-colors ${
-                    selectedService === service.id
-                      ? 'border-yellow-400 bg-yellow-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 space-y-1 sm:space-y-0">
-                    <div>
-                      <h4 className="text-sm sm:text-base font-semibold text-gray-900">{service.name}</h4>
-                      <p className="text-xs sm:text-sm text-gray-600">{service.duration}</p>
-                    </div>
-                    <span className="font-bold text-base sm:text-lg text-gray-900 self-start sm:self-auto">{service.price}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-500">{service.description}</p>
-                </button>
-              ))}
             </div>
-          </div>
 
-          {/* Seleção de Profissional */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <User className="h-5 w-5 text-yellow-400" />
-              <span>Escolha o Profissional</span>
-            </h3>
-            <div className="space-y-3">
-              {professionals.map((professional) => (
-                <button
-                  key={professional.id}
-                  onClick={() => setSelectedProfessional(professional.id)}
-                  className={`w-full p-3 sm:p-4 rounded-lg border-2 text-left transition-colors ${
-                    selectedProfessional === professional.id
-                      ? 'border-yellow-400 bg-yellow-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-black font-bold text-xs sm:text-sm">
-                        {professional.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm sm:text-base font-semibold text-gray-900">{professional.name}</h4>
-                      <p className="text-xs sm:text-sm text-gray-600 font-medium">{professional.specialty}</p>
-                      <p className="text-xs text-gray-500">{professional.experience}</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        {renderStars(professional.rating)}
-                        <span className="text-xs text-gray-600">({professional.rating})</span>
+            {/* Seleção de Profissional */}
+            <div className="mt-8">
+              <h4 className="font-medium text-gray-900 mb-4">Escolha o Profissional</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {barbeiros.map((professional) => (
+                  <div
+                    key={professional.id}
+                    onClick={() => setSelectedProfessional(professional)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedProfessional?.id === professional.id
+                        ? 'border-yellow-400 bg-yellow-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-600" />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 hidden sm:block">{professional.description}</p>
+                      <div>
+                        <h5 className="font-medium text-gray-900">{professional.nome}</h5>
+                        <p className="text-sm text-gray-600">{professional.especialidade}</p>
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                          <span className="text-sm text-gray-600">4.8</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Resumo e Confirmação */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mt-6 sm:mt-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Agendamento</h3>
-          
-          <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Barbearia:</span>
-                <span className="font-medium text-right">{barbershop.name}</span>
+            {/* Resumo e Confirmação */}
+            {selectedService && selectedProfessional && selectedDate && selectedTime && (
+              <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">Resumo do Agendamento</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Serviço:</span>
+                    <span className="font-medium">{selectedService.nome}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Profissional:</span>
+                    <span className="font-medium">{selectedProfessional.nome}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Data:</span>
+                    <span className="font-medium">
+                      {new Date(selectedDate).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Horário:</span>
+                    <span className="font-medium">{selectedTime}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Duração:</span>
+                    <span className="font-medium">{selectedService.duracaoMin} min</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-semibold text-yellow-600 pt-2 border-t">
+                    <span>Total:</span>
+                    <span>R$ {selectedService.preco.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Data:</span>
-                <span className="font-medium text-right">
-                  {selectedDate ? 
-                    availableDates.find(d => d.date === selectedDate)?.dayNumber + '/' + 
-                    availableDates.find(d => d.date === selectedDate)?.month 
-                    : 'Não selecionada'
-                  }
-                </span>
-              </div>
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Horário:</span>
-                <span className="font-medium text-right">{selectedTime || 'Não selecionado'}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Serviço:</span>
-                <span className="font-medium text-right">
-                  {selectedService ? services.find(s => s.id === selectedService)?.name : 'Não selecionado'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Profissional:</span>
-                <span className="font-medium text-right">
-                  {selectedProfessional ? professionals.find(p => p.id === selectedProfessional)?.name : 'Não selecionado'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm sm:text-base">
-                <span className="text-gray-600">Valor:</span>
-                <span className="font-bold text-lg sm:text-xl text-yellow-600 text-right">
-                  {selectedService ? services.find(s => s.id === selectedService)?.price : 'R$ 0'}
-                </span>
-              </div>
+            )}
+
+            {/* Botão de Confirmação */}
+            <div className="mt-8">
+              <button
+                onClick={handleBooking}
+                disabled={isLoading || !selectedDate || !selectedService || !selectedProfessional || !selectedTime || !clientData.nome || !clientData.telefone}
+                className="w-full bg-yellow-400 text-black py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Agendando...' : 'Confirmar Agendamento'}
+              </button>
             </div>
           </div>
-          
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-            <p className="text-xs sm:text-sm text-green-700">
-              <strong>📱 Confirmação:</strong> Após confirmar o agendamento, você receberá uma mensagem de confirmação via WhatsApp no número {barbershop.whatsapp} com todos os detalhes do seu agendamento.
-            </p>
-          </div>
-          
-          <button
-            onClick={handleBooking}
-            disabled={!selectedDate || !selectedService || !selectedProfessional || !selectedTime}
-            className="w-full bg-yellow-400 text-black py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-yellow-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
-          >
-            {!selectedDate || !selectedService || !selectedProfessional || !selectedTime 
-              ? 'Preencha todos os campos'
-              : 'Confirmar Agendamento'
-            }
-          </button>
         </div>
       </div>
     </div>
@@ -463,3 +416,4 @@ const ClientBookingPage: React.FC<ClientBookingPageProps> = ({ onBack }) => {
 };
 
 export default ClientBookingPage;
+
