@@ -62,4 +62,38 @@ exports.getClienteById = async (req, res) => {
   }
 };
 
+exports.getClientes = async (req, res) => {
+  const { telefone, barbeariaId } = req.query;
+  
+  try {
+    const whereClause = {};
+    
+    if (telefone) {
+      whereClause.telefone = telefone;
+    }
+    
+    if (barbeariaId) {
+      whereClause.barbeariaId = parseInt(barbeariaId);
+    }
+    
+    const clientes = await prisma.cliente.findMany({
+      where: whereClause,
+      include: {
+        barbearia: {
+          select: {
+            id: true,
+            nome: true,
+            nomeProprietario: true
+          }
+        }
+      }
+    });
+    
+    res.status(200).json(clientes);
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    res.status(500).json({ error: "Não foi possível buscar os clientes." });
+  }
+};
+
 

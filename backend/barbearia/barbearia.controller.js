@@ -136,8 +136,45 @@ async function loginBarbearia(req, res) {
   }
 }
 
+async function getBarbeariaByNomeUrl(req, res) {
+  try {
+    const { nomeUrl } = req.params;
+
+    if (!nomeUrl) {
+      return res.status(400).json({ error: 'nomeUrl é obrigatório' });
+    }
+
+    const barbearia = await prisma.barbearia.findUnique({
+      where: { nomeUrl },
+      include: {
+        barbeiros: {
+          where: { ativo: true }
+        },
+        servicos: true,
+        horarios: true
+      }
+    });
+
+    if (!barbearia) {
+      return res.status(404).json({ error: 'Barbearia não encontrada' });
+    }
+
+    if (!barbearia.ativa) {
+      return res.status(404).json({ error: 'Barbearia inativa' });
+    }
+
+    // Remover senha da resposta
+    const { senha: _, ...barbeariaData } = barbearia;
+
+    res.json(barbeariaData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createBarbearia,
   getBarbeariaById,
+  getBarbeariaByNomeUrl,
   loginBarbearia,
 };

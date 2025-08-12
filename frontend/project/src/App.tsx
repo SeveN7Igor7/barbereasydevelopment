@@ -12,12 +12,16 @@ import PaymentPage from './pages/PaymentPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import ClientBookingPage from './pages/ClientBookingPage';
-import { Barbearia } from './services/api';
+import BookingPage from './pages/BookingPage';
+import { Barbearia, apiService } from './services/api';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [barbeariaLogada, setBarbeariaLogada] = useState<Barbearia | null>(null);
+  const [barbeariaAgendamento, setBarbeariaAgendamento] = useState<Barbearia | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Verificar se há uma sessão salva no localStorage
   useEffect(() => {
@@ -32,18 +36,59 @@ function App() {
         localStorage.removeItem('barbeariaLogada');
       }
     }
+
+    // Verificar se a URL contém um nomeUrl para agendamento
+    checkForBookingUrl();
   }, []);
+
+  const checkForBookingUrl = async () => {
+    const path = window.location.pathname;
+    
+    // Se a URL não é a raiz, pode ser um nomeUrl de barbearia
+    if (path !== '/' && path !== '') {
+      const nomeUrl = path.substring(1); // Remove a barra inicial
+      
+      // Verificar se não é uma das páginas conhecidas
+      const knownPages = ['barbershop', 'payment', 'register', 'login', 'client-booking'];
+      if (!knownPages.includes(nomeUrl)) {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          const barbearia = await apiService.getBarbeariaByNomeUrl(nomeUrl);
+          setBarbeariaAgendamento(barbearia);
+          setCurrentPage('booking');
+        } catch (error) {
+          console.error('Erro ao buscar barbearia:', error);
+          setError('Barbearia não encontrada');
+          setCurrentPage('home');
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+  };
 
   const handlePageChange = (page: string) => {
     setCurrentPage(page);
+    setError(null);
     if (page !== 'barbershop') {
       // Não limpar a sessão ao navegar para outras páginas
+    }
+    
+    // Atualizar a URL
+    if (page === 'home') {
+      window.history.pushState({}, '', '/');
+    } else {
+      window.history.pushState({}, '', `/${page}`);
     }
   };
 
   const handleBackToHome = () => {
     setCurrentPage('home');
-    // Não limpar a sessão ao voltar para home
+    setError(null);
+    setBarbeariaAgendamento(null);
+    window.history.pushState({}, '', '/');
   };
 
   const handleBarbershopLogin = (barbearia: Barbearia) => {
@@ -56,7 +101,43 @@ function App() {
     setBarbeariaLogada(null);
     localStorage.removeItem('barbeariaLogada');
     setCurrentPage('home');
+    window.history.pushState({}, '', '/');
   };
+
+  // Mostrar loading se estiver carregando
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar erro se houver
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Ops!</h1>
+          <p className="text-gray-600 mb-8">{error}</p>
+          <button
+            onClick={handleBackToHome}
+            className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+          >
+            Voltar ao Início
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Página de agendamento
+  if (currentPage === 'booking' && barbeariaAgendamento) {
+    return <BookingPage onBack={handleBackToHome} barbearia={barbeariaAgendamento} />;
+  }
 
   if (currentPage === 'barbershop') {
     if (!isLoggedIn) {

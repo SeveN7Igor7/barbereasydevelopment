@@ -138,6 +138,10 @@ class ApiService {
     return this.request<Barbearia>(`/barbearias/${id}`);
   }
 
+  async getBarbeariaByNomeUrl(nomeUrl: string): Promise<Barbearia> {
+    return this.request<Barbearia>(`/barbearias/url/${nomeUrl}`);
+  }
+
   async loginBarbearia(data: {
     email: string;
     senha: string;
@@ -162,6 +166,15 @@ class ApiService {
 
   async getClienteById(id: number): Promise<Cliente> {
     return this.request<Cliente>(`/clientes/${id}`);
+  }
+
+  async getClienteByTelefone(telefone: string, barbeariaId: number): Promise<Cliente | null> {
+    try {
+      const clientes = await this.request<Cliente[]>(`/clientes?telefone=${telefone}&barbeariaId=${barbeariaId}`);
+      return clientes.length > 0 ? clientes[0] : null;
+    } catch (error) {
+      return null;
+    }
   }
 
   // Métodos para Barbeiros
@@ -284,6 +297,41 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  async checkAvailability(barbeariaId: number, barbeiroId: number, data: string): Promise<string[]> {
+    try {
+      const agendamentos = await this.getAgendamentosByBarbearia(barbeariaId);
+      const dataAgendamentos = agendamentos.filter(ag => 
+        ag.barbeiroId === barbeiroId && 
+        ag.dataHora.startsWith(data) && 
+        ag.status !== 'CANCELADO'
+      );
+      
+      const horariosOcupados = dataAgendamentos.map(ag => {
+        const hora = new Date(ag.dataHora).toLocaleTimeString('pt-BR', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+        return hora;
+      });
+
+      // Gerar horários disponíveis (9h às 18h, de 30 em 30 minutos)
+      const horariosDisponiveis: string[] = [];
+      for (let hora = 9; hora < 18; hora++) {
+        for (let minuto of [0, 30]) {
+          const horario = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+          if (!horariosOcupados.includes(horario)) {
+            horariosDisponiveis.push(horario);
+          }
+        }
+      }
+
+      return horariosDisponiveis;
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade:', error);
+      return [];
+    }
   }
 
   // Método para verificar status do WhatsApp
