@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
 const barbeariaRoutes = require('./barbearia/barbearia.routes');
 const clienteRoutes = require('./cliente/cliente.routes');
 const agendamentoRoutes = require('./agendamento/agendamento.routes');
 const servicoRoutes = require('./servico/servico.routes');
 const barbeiroRoutes = require('./barbeiro/barbeiro.routes');
+const dashboardRoutes = require('./dashboard/dashboard.routes');
+const dashboardWebSocket = require('./dashboard/websocket');
 const whatsappService = require('./whatsapp/whatsapp.service');
 const logger = require('./utils/logger');
 
@@ -68,6 +71,9 @@ app.use('/servicos', servicoRoutes);
 
 // Usa as rotas de barbeiros, prefixadas por /barbeiros
 app.use('/barbeiros', barbeiroRoutes);
+
+// Usa as rotas do dashboard, prefixadas por /dashboard
+app.use('/dashboard', dashboardRoutes);
 
 // Rota raiz para teste
 app.get('/', (req, res) => {
@@ -164,6 +170,9 @@ app.post('/logs/cleanup', (req, res) => {
 
 const port = process.env.PORT || 3000;
 
+// Criar servidor HTTP para suportar WebSocket
+const server = http.createServer(app);
+
 // Inicializar WhatsApp quando o servidor iniciar
 async function startServer() {
   try {
@@ -173,18 +182,24 @@ async function startServer() {
     logger.system('Inicializando sistema WhatsApp...');
     await whatsappService.initialize();
     
-    app.listen(port, '0.0.0.0', () => {
+    // Inicializar WebSocket do dashboard
+    dashboardWebSocket.initialize(server);
+    
+    server.listen(port, '0.0.0.0', () => {
       logger.success(`Servidor rodando na porta ${port}`);
+      logger.success(`Dashboard disponível em: http://localhost:${port}/dashboard`);
       logger.system(`WhatsApp Status: ${whatsappService.isReady() ? 'Conectado' : 'Aguardando conexão'}`);
       logger.info('Sistema de barbearia totalmente operacional!', {
         port,
+        dashboardUrl: `http://localhost:${port}/dashboard`,
         whatsappConnected: whatsappService.isReady(),
         features: [
           'API REST completa',
           'Controle de conflitos de agendamento',
           'WhatsApp integrado',
           'Chat interativo',
-          'Logs avançados'
+          'Logs avançados',
+          'Dashboard de monitoramento'
         ]
       });
     });

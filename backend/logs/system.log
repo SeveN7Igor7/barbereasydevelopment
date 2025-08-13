@@ -28,3 +28,10 @@
 {"timestamp":"2025-08-13T03:01:54.408Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
 {"timestamp":"2025-08-13T03:06:09.213Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
 {"timestamp":"2025-08-13T03:06:09.351Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
+{"timestamp":"2025-08-13T17:25:34.935Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
+{"timestamp":"2025-08-13T17:25:34.936Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
+{"timestamp":"2025-08-13T17:25:35.209Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
+{"timestamp":"2025-08-13T17:28:41.065Z","level":"SYSTEM","message":"Forçando nova autenticação do WhatsApp via API"}
+{"timestamp":"2025-08-13T17:31:32.894Z","level":"SYSTEM","message":"Forçando nova autenticação do WhatsApp via API"}
+{"timestamp":"2025-08-13T17:32:15.648Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
+{"timestamp":"2025-08-13T17:32:15.656Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
