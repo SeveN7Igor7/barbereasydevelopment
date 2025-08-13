@@ -35,3 +35,15 @@
 {"timestamp":"2025-08-13T17:31:32.894Z","level":"SYSTEM","message":"Forçando nova autenticação do WhatsApp via API"}
 {"timestamp":"2025-08-13T17:32:15.648Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
 {"timestamp":"2025-08-13T17:32:15.656Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
+{"timestamp":"2025-08-13T18:26:23.804Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
+{"timestamp":"2025-08-13T18:26:23.805Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
+{"timestamp":"2025-08-13T18:26:23.975Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
+{"timestamp":"2025-08-13T18:26:33.158Z","level":"SYSTEM","message":"Recebido sinal SIGTERM, encerrando servidor..."}
+{"timestamp":"2025-08-13T18:26:33.162Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
+{"timestamp":"2025-08-13T18:26:39.064Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
+{"timestamp":"2025-08-13T18:26:39.065Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
+{"timestamp":"2025-08-13T18:26:39.249Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
+{"timestamp":"2025-08-13T18:33:34.388Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
+{"timestamp":"2025-08-13T18:33:34.389Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
+{"timestamp":"2025-08-13T18:33:34.601Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
+{"timestamp":"2025-08-13T18:35:16.100Z","level":"SYSTEM","message":"Diretório criado: C:\\Users\\igorv\\Desktop\\barbereasy\\barbereasy\\backend\\images\\1"}

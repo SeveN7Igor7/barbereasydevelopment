@@ -17,6 +17,15 @@ export interface Barbearia {
   servicos?: Servico[];
   clientes?: Cliente[];
   agendamentos?: Agendamento[];
+  horarios?: Horario[];
+}
+
+export interface Horario {
+  id: number;
+  diaSemana: 'DOMINGO' | 'SEGUNDA' | 'TERCA' | 'QUARTA' | 'QUINTA' | 'SEXTA' | 'SABADO';
+  horaInicio: string;
+  horaFim: string;
+  barbeariaId: number;
 }
 
 export interface Cliente {
@@ -390,6 +399,95 @@ class ApiService {
       message: string;
       features: string[];
     }>('/whatsapp/status');
+  }
+
+  // Métodos para horários de funcionamento
+  async getHorariosByBarbearia(barbeariaId: number): Promise<Horario[]> {
+    return this.request<Horario[]>(`/barbearias/${barbeariaId}/horarios`);
+  }
+
+  async createOrUpdateHorarios(barbeariaId: number, horarios: Omit<Horario, 'id' | 'barbeariaId'>[]): Promise<{
+    message: string;
+    quantidade: number;
+  }> {
+    return this.request<{
+      message: string;
+      quantidade: number;
+    }>(`/barbearias/${barbeariaId}/horarios`, {
+      method: 'POST',
+      body: JSON.stringify({ horarios }),
+    });
+  }
+
+  async updateHorario(barbeariaId: number, horarioId: number, data: {
+    diaSemana?: string;
+    horaInicio?: string;
+    horaFim?: string;
+  }): Promise<Horario> {
+    return this.request<Horario>(`/barbearias/${barbeariaId}/horarios/${horarioId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteHorario(barbeariaId: number, horarioId: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/barbearias/${barbeariaId}/horarios/${horarioId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Métodos para upload de imagens
+  async uploadLogo(barbeariaId: number, file: File): Promise<{
+    message: string;
+    logoUrl: string;
+    filename: string;
+    size: number;
+  }> {
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    const response = await fetch(`${this.baseUrl}/barbearias/${barbeariaId}/upload/logo`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  async uploadBanner(barbeariaId: number, file: File): Promise<{
+    message: string;
+    bannerUrl: string;
+    filename: string;
+    size: number;
+  }> {
+    const formData = new FormData();
+    formData.append('banner', file);
+
+    const response = await fetch(`${this.baseUrl}/barbearias/${barbeariaId}/upload/banner`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  // Métodos para obter URLs das imagens
+  getLogoUrl(barbeariaId: number): string {
+    return `${this.baseUrl}/barbearias/${barbeariaId}/images/logo`;
+  }
+
+  getBannerUrl(barbeariaId: number): string {
+    return `${this.baseUrl}/barbearias/${barbeariaId}/images/banner`;
   }
 }
 
