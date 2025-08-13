@@ -1,143 +1,286 @@
 class MessageTemplates {
   
-  // Template para criação de conta do cliente
-  static clientAccountCreated(clienteName, barbeariaName) {
-    return `🎉 *Bem-vindo(a) à ${barbeariaName}!*
+  // Saudação inicial
+  static initialGreeting() {
+    return `👋 *Bem-vindo ao Sistema de Agendamentos!*
 
-Olá *${clienteName}*! 👋
+Para continuar, escolha uma das opções:
 
-Sua conta foi criada com sucesso em nossa plataforma! 
+*1* - 💈 Sou uma Barbearia
+*2* - 👤 Sou um Cliente
 
-✅ *Agora você pode:*
-• Fazer agendamentos online
-• Acompanhar seus horários
-• Receber lembretes automáticos
-• Ver histórico de serviços
-
-📱 *Como agendar:*
-Entre em contato conosco ou use nossa plataforma online para escolher o melhor horário para você!
-
-Estamos ansiosos para atendê-lo(a)! 💈✨
+Digite o número da opção desejada.
 
 ---
-*${barbeariaName}*
-_Sua beleza é nossa prioridade!_`;
+💈 _Sistema de Agendamentos_`;
   }
 
-  // Template para confirmação de agendamento do cliente
-  static clientAppointmentConfirmed(clienteName, barbeariaName, serviceName, price, dateTime, barbeiroName) {
-    const formattedDate = new Date(dateTime).toLocaleDateString('pt-BR');
-    const formattedTime = new Date(dateTime).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  // Confirmação de login para barbearia
+  static confirmBarbeariaLogin(phoneNumber) {
+    return `💈 *LOGIN COMO BARBEARIA*
 
-    return `✅ *Agendamento Confirmado!*
+Por favor, confirme se este é o número de telefone da sua barbearia:
 
-Olá *${clienteName}*! 
+📱 *Número:* ${phoneNumber}
 
-Seu agendamento foi realizado com sucesso! 🎉
+*1* - ✅ Sim, este é o número da minha barbearia
+*2* - ❌ Não, este não é o número correto
 
-📋 *Detalhes do Agendamento:*
-• *Serviço:* ${serviceName}
-• *Barbeiro:* ${barbeiroName}
-• *Data:* ${formattedDate}
-• *Horário:* ${formattedTime}
-• *Valor:* R$ ${price.toFixed(2).replace('.', ',')}
-• *Local:* ${barbeariaName}
+Digite o número da opção.`;
+  }
 
-⏰ *Lembrete:*
-Chegue com 10 minutos de antecedência para garantir seu horário!
+  // Confirmação de login para cliente
+  static confirmClienteLogin(phoneNumber) {
+    return `👤 *LOGIN COMO CLIENTE*
 
-📞 *Precisa remarcar ou cancelar?*
-Entre em contato conosco o mais breve possível.
+Por favor, confirme se este é o seu número de telefone:
 
-Até breve! 💈✨
+📱 *Número:* ${phoneNumber}
+
+*1* - ✅ Sim, este é o meu número
+*2* - ❌ Não, este não é o meu número
+
+Digite o número da opção.`;
+  }
+
+  // Mensagem de sucesso de login para barbearia
+  static barbeariaLoginSuccess(barbeariaName) {
+    return `✅ *LOGIN REALIZADO COM SUCESSO!*
+
+Bem-vinda, *${barbeariaName}*! 💈
+
+${this.barbeariaMenu(barbeariaName)}`;
+  }
+
+  // Mensagem de barbearia não encontrada
+  static barbeariaNotFound(phoneNumber) {
+    return `❌ *BARBEARIA NÃO ENCONTRADA*
+
+Não encontramos uma barbearia cadastrada com este número de telefone.
+
+📞 *Número verificado:* ${phoneNumber}
+
+💡 *Possíveis soluções:*
+• Verifique se o número está correto
+• Entre em contato com o suporte
+• Cadastre sua barbearia no sistema
 
 ---
-*${barbeariaName}*
-_Sua beleza é nossa prioridade!_`;
+💈 _Sistema de Agendamentos_`;
   }
 
-  // Template para notificação da barbearia sobre novo agendamento
-  static barbeariaNewAppointment(clienteName, clientePhone, serviceName, price, dateTime, barbeiroName) {
-    const formattedDate = new Date(dateTime).toLocaleDateString('pt-BR');
-    const formattedTime = new Date(dateTime).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  // Mensagem de sucesso de login para cliente
+  static clienteLoginSuccess(clienteName) {
+    return `✅ *LOGIN REALIZADO COM SUCESSO!*
 
-    return `🔔 *NOVO AGENDAMENTO!*
+Olá, *${clienteName}*! 👋
 
-📅 *Detalhes do Agendamento:*
+${this.clienteMenu(clienteName)}`;
+  }
 
-👤 *Cliente:* ${clienteName}
-📱 *Telefone:* ${clientePhone}
-✂️ *Serviço:* ${serviceName}
-💰 *Valor:* R$ ${price.toFixed(2).replace('.', ',')}
-📅 *Data:* ${formattedDate}
-⏰ *Horário:* ${formattedTime}
-💈 *Barbeiro:* ${barbeiroName}
+  // Mensagem de cliente não encontrado
+  static clienteNotFound(phoneNumber) {
+    return `❌ *CLIENTE NÃO ENCONTRADO*
 
-📋 *Status:* AGENDAMENTO PROGRAMADO
+Não encontramos um cliente cadastrado com este número de telefone.
 
-⚠️ *Ação Necessária:*
-Confirme a disponibilidade e prepare-se para o atendimento.
+📞 *Número verificado:* ${phoneNumber}
+
+💡 *Para se cadastrar:*
+• Faça um agendamento através do nosso site
+• Entre em contato com uma de nossas barbearias
+• O cadastro será feito automaticamente
 
 ---
-_Sistema de Agendamentos - Barbearia_`;
+👤 _Sistema de Agendamentos_`;
   }
 
-  // Template de menu expandido para barbearia
+  // Mensagem de número incorreto
+  static incorrectNumber() {
+    return `📱 *NÚMERO INCORRETO*
+
+Por favor, entre em contato usando o número de telefone correto cadastrado no sistema.
+
+💡 *Dica:* O número deve estar exatamente como foi cadastrado.
+
+---
+_Sistema de Agendamentos_`;
+  }
+
+  // Menu principal da barbearia
   static barbeariaMenu(barbeariaName) {
-    return `📋 *MENU DE COMANDOS - ${barbeariaName}*
+    return `📋 *MENU PRINCIPAL - ${barbeariaName}*
 
-🗓️ *AGENDAMENTOS:*
-• *agendamentos hoje* - Ver agendamentos de hoje
-• *agendamentos amanha* - Ver agendamentos de amanhã
-• *semana* - Ver agendamentos da semana
-• *cancelados* - Ver cancelamentos recentes
+Selecione uma opção:
 
-📊 *RELATÓRIOS:*
-• *status* - Resumo geral da barbearia
-• *faturamento* - Receita do mês atual
+*1* - 🗓️ Agendamentos de Hoje
+*2* - 🗓️ Agendamentos Pendentes
+*3* - 🗓️ Agendamentos de Amanhã
+*4* - 🗓️ Agendamentos da Semana
+*5* - ❌ Cancelar Agendamento
+*6* - 📊 Resumo da Barbearia
+*7* - 👥 Lista de Barbeiros
+*8* - ✂️ Lista de Serviços
 
-👥 *GESTÃO:*
-• *barbeiros* - Lista da equipe
-• *servicos* - Lista de serviços
-• *clientes* - Clientes recentes
-
-❓ *AJUDA:*
-• *menu* - Exibir este menu
+*0* - Sair/Reiniciar
 
 ---
 💈 *${barbeariaName}*
 _Sistema de Gestão WhatsApp_`;
   }
 
-  // Template de menu expandido para cliente
+  // Menu principal do cliente
   static clienteMenu(clienteName) {
-    return `📋 *MENU DE COMANDOS*
+    return `📋 *MENU PRINCIPAL - Olá ${clienteName}*! 👋
 
-Olá *${clienteName}*! 👋
+Selecione uma opção:
 
-📅 *AGENDAMENTOS:*
-• *meus agendamentos* - Ver próximos agendamentos
-• *proximo* - Ver próximo agendamento
-• *historico* - Ver histórico de atendimentos
-• *cancelar agendamento* - Solicitar cancelamento
+*1* - 📅 Meus Agendamentos
+*2* - 🗓️ Próximo Agendamento
+*3* - 📝 Histórico de Atendimentos
+*4* - ✂️ Serviços Disponíveis
+*5* - 💈 Nossos Barbeiros
 
-ℹ️ *INFORMAÇÕES:*
-• *servicos* - Ver serviços e preços
-• *barbeiros* - Conhecer a equipe
-• *contato* - Informações da barbearia
-
-❓ *AJUDA:*
-• *menu* - Exibir este menu
+*0* - Sair/Reiniciar
 
 ---
-💈 *Sistema de Agendamentos*
-_Sua beleza é nossa prioridade!_`;
+💈 _Sistema de Agendamentos_`;
+  }
+
+  // Mensagem de opção inválida
+  static invalidOption(userName) {
+    return `❌ Opção inválida. Por favor, digite um número válido do menu.
+
+Digite *0* para voltar ao menu anterior ou reiniciar.
+
+---
+Olá *${userName}*! 👋`;
+  }
+
+  // Template para agendamentos pendentes (com opção de cancelar)
+  static agendamentosPendentes(agendamentos) {
+    if (agendamentos.length === 0) {
+      return `📅 *AGENDAMENTOS PENDENTES*
+
+✅ Nenhum agendamento pendente!
+
+*0* - Voltar ao Menu Principal
+
+---
+_Sistema de Agendamentos_ 📆`;
+    }
+
+    let message = `📅 *AGENDAMENTOS PENDENTES*\n\n`;
+    message += `📊 *Total: ${agendamentos.length} agendamento(s)*\n\n`;
+
+    agendamentos.forEach((agendamento, index) => {
+      const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+      const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+        hour: "2-digit", 
+        minute: "2-digit" 
+      });
+      
+      message += `${index + 1}. 📅 *${date}* às *${time}*\n`;
+      message += `   👤 ${agendamento.cliente.nome}\n`;
+      message += `   💈 ${agendamento.barbeiro.nome}\n`;
+      message += `   ✂️ ${agendamento.nomeServico}\n`;
+      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}\n`;
+      message += `   📱 ${agendamento.cliente.telefone}\n\n`;
+    });
+
+    message += `💡 *Para cancelar um agendamento, digite:* 1\n`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
+    message += `---\n_Sistema de Agendamentos_ 📆`;
+    return message;
+  }
+
+  // Template para listar agendamentos para cancelar
+  static listAgendamentosParaCancelar(agendamentos, barbeariaName) {
+    let message = `❌ *CANCELAR AGENDAMENTO - ${barbeariaName}*\n\n`;
+    message += `📋 *Selecione o agendamento para cancelar:*
+
+`;
+
+    agendamentos.forEach((agendamento, index) => {
+      const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+      const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+        hour: "2-digit", 
+        minute: "2-digit" 
+      });
+      
+      message += `*${index + 1}* - 📅 ${date} às ${time}\n`;
+      message += `     👤 ${agendamento.cliente.nome}\n`;
+      message += `     💈 ${agendamento.barbeiro.nome}\n`;
+      message += `     ✂️ ${agendamento.nomeServico}\n\n`;
+    });
+
+    message += `💡 *Digite o número do agendamento que deseja cancelar.*\n`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
+    message += `---\n💈 *${barbeariaName}*`;
+    return message;
+  }
+
+  // Mensagem de confirmação de cancelamento para barbearia
+  static barbeariaCancelConfirmation(agendamento, barbeariaName) {
+    const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+    const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
+    return `✅ *AGENDAMENTO CANCELADO*
+
+O agendamento foi cancelado com sucesso:
+
+👤 *Cliente:* ${agendamento.cliente.nome}
+📅 *Data:* ${date}
+⏰ *Horário:* ${time}
+✂️ *Serviço:* ${agendamento.nomeServico}
+
+📱 *O cliente foi notificado sobre o cancelamento.*
+
+---
+💈 *${barbeariaName}*`;
+  }
+
+  // Mensagem de agendamento cancelado para o cliente
+  static clientAppointmentCanceled(agendamento) {
+    const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+    const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
+    return `❌ *AGENDAMENTO CANCELADO*
+
+Olá *${agendamento.cliente.nome}*! 
+
+Informamos que seu agendamento foi cancelado:
+
+📅 *Data:* ${date}
+⏰ *Horário:* ${time}
+✂️ *Serviço:* ${agendamento.nomeServico}
+💈 *Barbeiro:* ${agendamento.barbeiro.nome}
+
+📞 *Motivo:* Cancelado pela barbearia
+
+💡 *Para reagendar:*
+Entre em contato conosco ou acesse nossa plataforma online.
+
+Pedimos desculpas pelo inconveniente.
+
+---
+💈 _Sistema de Agendamentos_`;
+  }
+
+  // Mensagem quando não há agendamentos para cancelar
+  static noAppointmentsToCancel() {
+    return `📅 *CANCELAR AGENDAMENTO*
+
+✅ Não há agendamentos pendentes para cancelar.
+
+*0* - Voltar ao Menu Principal
+
+---
+_Sistema de Agendamentos_`;
   }
 
   // Template para agendamentos de hoje
@@ -149,28 +292,31 @@ _Sua beleza é nossa prioridade!_`;
 
 Aproveite para organizar a barbearia ou descansar! 😊
 
+*0* - Voltar ao Menu Principal
+
 ---
-_${new Date().toLocaleDateString('pt-BR')}_ 📆`;
+_${new Date().toLocaleDateString("pt-BR")}_ 📆`;
     }
 
     let message = `📅 *AGENDAMENTOS DE HOJE*\n\n`;
     message += `📊 *Total: ${agendamentos.length} agendamento(s)*\n\n`;
 
     agendamentos.forEach((agendamento, index) => {
-      const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+        hour: "2-digit", 
+        minute: "2-digit" 
       });
       
       message += `${index + 1}. ⏰ *${time}*\n`;
       message += `   👤 ${agendamento.cliente.nome}\n`;
       message += `   💈 ${agendamento.barbeiro.nome}\n`;
       message += `   ✂️ ${agendamento.nomeServico}\n`;
-      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}\n`;
+      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}\n`;
       message += `   📱 ${agendamento.cliente.telefone}\n\n`;
     });
 
-    message += `---\n_${new Date().toLocaleDateString('pt-BR')}_ 📆`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
+    message += `---\n_${new Date().toLocaleDateString("pt-BR")}_ 📆`;
     return message;
   }
 
@@ -184,28 +330,31 @@ _${new Date().toLocaleDateString('pt-BR')}_ 📆`;
 
 ✅ Nenhum agendamento para amanhã!
 
+*0* - Voltar ao Menu Principal
+
 ---
-_${amanha.toLocaleDateString('pt-BR')}_ 📆`;
+_${amanha.toLocaleDateString("pt-BR")}_ 📆`;
     }
 
     let message = `📅 *AGENDAMENTOS DE AMANHÃ*\n\n`;
     message += `📊 *Total: ${agendamentos.length} agendamento(s)*\n\n`;
 
     agendamentos.forEach((agendamento, index) => {
-      const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+        hour: "2-digit", 
+        minute: "2-digit" 
       });
       
       message += `${index + 1}. ⏰ *${time}*\n`;
       message += `   👤 ${agendamento.cliente.nome}\n`;
       message += `   💈 ${agendamento.barbeiro.nome}\n`;
       message += `   ✂️ ${agendamento.nomeServico}\n`;
-      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}\n`;
+      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}\n`;
       message += `   📱 ${agendamento.cliente.telefone}\n\n`;
     });
 
-    message += `---\n_${amanha.toLocaleDateString('pt-BR')}_ 📆`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
+    message += `---\n_${amanha.toLocaleDateString("pt-BR")}_ 📆`;
     return message;
   }
 
@@ -215,6 +364,8 @@ _${amanha.toLocaleDateString('pt-BR')}_ 📆`;
       return `📅 *AGENDAMENTOS DA SEMANA*
 
 ✅ Nenhum agendamento para os próximos 7 dias!
+
+*0* - Voltar ao Menu Principal
 
 ---
 _Próximos 7 dias_ 📆`;
@@ -226,7 +377,7 @@ _Próximos 7 dias_ 📆`;
     // Agrupar por dia
     const agendamentosPorDia = {};
     agendamentos.forEach(agendamento => {
-      const data = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
+      const data = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
       if (!agendamentosPorDia[data]) {
         agendamentosPorDia[data] = [];
       }
@@ -236,15 +387,16 @@ _Próximos 7 dias_ 📆`;
     Object.keys(agendamentosPorDia).forEach(data => {
       message += `📅 *${data}*\n`;
       agendamentosPorDia[data].forEach(agendamento => {
-        const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+          hour: "2-digit", 
+          minute: "2-digit" 
         });
         message += `   ⏰ ${time} - ${agendamento.cliente.nome} (${agendamento.barbeiro.nome})\n`;
       });
-      message += '\n';
+      message += "\n";
     });
 
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n_Próximos 7 dias_ 📆`;
     return message;
   }
@@ -265,8 +417,10 @@ _Próximos 7 dias_ 📆`;
 👤 *CLIENTES:*
 • ${resumo.totalClientes} cliente(s) cadastrado(s)
 
+*0* - Voltar ao Menu Principal
+
 ---
-_Atualizado em ${new Date().toLocaleString('pt-BR')}_ 🕐`;
+_Atualizado em ${new Date().toLocaleString("pt-BR")}_ 🕐`;
   }
 
   // Template para lista de barbeiros
@@ -275,6 +429,8 @@ _Atualizado em ${new Date().toLocaleString('pt-BR')}_ 🕐`;
       return `👥 *EQUIPE DE BARBEIROS*
 
 ⚠️ Nenhum barbeiro ativo cadastrado.
+
+*0* - Voltar ao Menu Principal
 
 ---
 _Sistema de Gestão_`;
@@ -291,6 +447,7 @@ _Sistema de Gestão_`;
       message += `   ✅ Ativo\n\n`;
     });
 
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n_Sistema de Gestão_ 👥`;
     return message;
   }
@@ -302,6 +459,8 @@ _Sistema de Gestão_`;
 
 ⚠️ Nenhum serviço cadastrado.
 
+*0* - Voltar ao Menu Principal
+
 ---
 _Sistema de Gestão_`;
     }
@@ -312,9 +471,10 @@ _Sistema de Gestão_`;
     servicos.forEach((servico, index) => {
       message += `${index + 1}. ✂️ *${servico.nome}*\n`;
       message += `   ⏱️ ${servico.duracaoMin} minutos\n`;
-      message += `   💰 R$ ${servico.preco.toFixed(2).replace('.', ',')}\n\n`;
+      message += `   💰 R$ ${servico.preco.toFixed(2).replace(".", ",")}\n\n`;
     });
 
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n_Sistema de Gestão_ ✂️`;
     return message;
   }
@@ -331,6 +491,8 @@ Olá *${clienteName}*! 👋
 💡 *Que tal agendar um horário?*
 Entre em contato conosco para marcar seu próximo atendimento!
 
+*0* - Voltar ao Menu Principal
+
 ---
 💈 _Sistema de Agendamentos_`;
     }
@@ -340,20 +502,21 @@ Entre em contato conosco para marcar seu próximo atendimento!
     message += `📊 *Próximos ${agendamentos.length} agendamento(s):*\n\n`;
 
     agendamentos.forEach((agendamento, index) => {
-      const date = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
-      const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+      const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+        hour: "2-digit", 
+        minute: "2-digit" 
       });
       
       message += `${index + 1}. 📅 *${date}* às *${time}*\n`;
       message += `   ✂️ ${agendamento.nomeServico}\n`;
       message += `   💈 ${agendamento.barbeiro.nome}\n`;
       message += `   🏪 ${agendamento.barbearia.nome}\n`;
-      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}\n`;
-      message += `   📋 ${agendamento.status.replace('_', ' ')}\n\n`;
+      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}\n`;
+      message += `   📋 ${agendamento.status.replace("_", " ")}\n\n`;
     });
 
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n💈 _Sistema de Agendamentos_`;
     return message;
   }
@@ -370,14 +533,16 @@ Olá *${clienteName}*! 👋
 💡 *Que tal agendar um horário?*
 Entre em contato conosco para marcar seu próximo atendimento!
 
+*0* - Voltar ao Menu Principal
+
 ---
 💈 _Sistema de Agendamentos_`;
     }
 
-    const date = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
-    const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
+    const time = new Date(agendamento.dataHora).toLocaleTimeString("pt-BR", { 
+      hour: "2-digit", 
+      minute: "2-digit" 
     });
 
     return `📅 *SEU PRÓXIMO AGENDAMENTO*
@@ -389,11 +554,13 @@ Olá *${clienteName}*! 👋
 ✂️ *Serviço:* ${agendamento.nomeServico}
 💈 *Barbeiro:* ${agendamento.barbeiro.nome}
 🏪 *Local:* ${agendamento.barbearia.nome}
-💰 *Valor:* R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}
-📋 *Status:* ${agendamento.status.replace('_', ' ')}
+💰 *Valor:* R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}
+📋 *Status:* ${agendamento.status.replace("_", " ")}
 
 ⏰ *Lembrete:*
 Chegue com 10 minutos de antecedência!
+
+*0* - Voltar ao Menu Principal
 
 ---
 💈 _Sistema de Agendamentos_`;
@@ -411,6 +578,8 @@ Olá *${clienteName}*! 👋
 💡 *Primeira vez?*
 Seja bem-vindo(a)! Estamos ansiosos para atendê-lo(a)!
 
+*0* - Voltar ao Menu Principal
+
 ---
 💈 _Sistema de Agendamentos_`;
     }
@@ -420,91 +589,17 @@ Seja bem-vindo(a)! Estamos ansiosos para atendê-lo(a)!
     message += `📊 *Últimos ${historico.length} atendimento(s):*\n\n`;
 
     historico.forEach((agendamento, index) => {
-      const date = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
+      const date = new Date(agendamento.dataHora).toLocaleDateString("pt-BR");
       
       message += `${index + 1}. 📅 *${date}*\n`;
       message += `   ✂️ ${agendamento.nomeServico}\n`;
       message += `   💈 ${agendamento.barbeiro.nome}\n`;
       message += `   🏪 ${agendamento.barbearia.nome}\n`;
-      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}\n\n`;
+      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace(".", ",")}\n\n`;
     });
 
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n💈 _Sistema de Agendamentos_`;
-    return message;
-  }
-
-  // Template para clientes recentes
-  static clientesRecentes(clientes) {
-    if (clientes.length === 0) {
-      return `👥 *CLIENTES RECENTES*
-
-⚠️ Nenhum cliente cadastrado.
-
----
-_Sistema de Gestão_`;
-    }
-
-    let message = `👥 *CLIENTES RECENTES*\n\n`;
-    message += `📊 *Últimos ${clientes.length} cliente(s):*\n\n`;
-
-    clientes.forEach((cliente, index) => {
-      message += `${index + 1}. 👤 *${cliente.nome}*\n`;
-      message += `   📱 ${cliente.telefone}\n`;
-      message += `   📋 ${cliente.status}\n\n`;
-    });
-
-    message += `---\n_Sistema de Gestão_ 👥`;
-    return message;
-  }
-
-  // Template para faturamento do mês
-  static faturamentoMes(faturamento, barbeariaName) {
-    const meses = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
-
-    return `💰 *FATURAMENTO - ${barbeariaName}*
-
-📅 *Mês:* ${meses[faturamento.mes - 1]}
-
-💵 *Receita Total:* R$ ${faturamento.total.toFixed(2).replace('.', ',')}
-📊 *Atendimentos:* ${faturamento.quantidade}
-💳 *Ticket Médio:* R$ ${faturamento.quantidade > 0 ? (faturamento.total / faturamento.quantidade).toFixed(2).replace('.', ',') : '0,00'}
-
----
-_Atualizado em ${new Date().toLocaleString('pt-BR')}_ 💰`;
-  }
-
-  // Template para agendamentos cancelados
-  static agendamentosCancelados(cancelados) {
-    if (cancelados.length === 0) {
-      return `❌ *AGENDAMENTOS CANCELADOS*
-
-✅ Nenhum cancelamento nos últimos 7 dias!
-
----
-_Últimos 7 dias_ 📅`;
-    }
-
-    let message = `❌ *AGENDAMENTOS CANCELADOS*\n\n`;
-    message += `📊 *Total: ${cancelados.length} cancelamento(s) (últimos 7 dias)*\n\n`;
-
-    cancelados.forEach((agendamento, index) => {
-      const date = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
-      const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-      
-      message += `${index + 1}. 📅 *${date}* às *${time}*\n`;
-      message += `   👤 ${agendamento.cliente.nome}\n`;
-      message += `   💈 ${agendamento.barbeiro.nome}\n`;
-      message += `   ✂️ ${agendamento.nomeServico}\n`;
-      message += `   💰 R$ ${agendamento.precoServico.toFixed(2).replace('.', ',')}\n\n`;
-    });
-
-    message += `---\n_Últimos 7 dias_ ❌`;
     return message;
   }
 
@@ -517,6 +612,8 @@ _Últimos 7 dias_ 📅`;
 
 Entre em contato para mais informações!
 
+*0* - Voltar ao Menu Principal
+
 ---
 💈 *${barbeariaName}*`;
     }
@@ -526,10 +623,11 @@ Entre em contato para mais informações!
     servicos.forEach((servico, index) => {
       message += `${index + 1}. ✂️ *${servico.nome}*\n`;
       message += `   ⏱️ ${servico.duracaoMin} minutos\n`;
-      message += `   💰 R$ ${servico.preco.toFixed(2).replace('.', ',')}\n\n`;
+      message += `   💰 R$ ${servico.preco.toFixed(2).replace(".", ",")}\n\n`;
     });
 
     message += `💡 *Para agendar:*\nEntre em contato conosco!\n\n`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n💈 *${barbeariaName}*`;
     return message;
   }
@@ -540,6 +638,8 @@ Entre em contato para mais informações!
       return `👥 *NOSSA EQUIPE*
 
 ⚠️ Nenhum barbeiro disponível no momento.
+
+*0* - Voltar ao Menu Principal
 
 ---
 💈 *${barbeariaName}*`;
@@ -556,56 +656,9 @@ Entre em contato para mais informações!
     });
 
     message += `💡 *Para agendar:*\nEscolha seu barbeiro preferido e entre em contato!\n\n`;
+    message += `*0* - Voltar ao Menu Principal\n\n`;
     message += `---\n💈 *${barbeariaName}*`;
     return message;
-  }
-
-  // Template para cancelar agendamento
-  static cancelarAgendamento(agendamento, clienteName) {
-    const date = new Date(agendamento.dataHora).toLocaleDateString('pt-BR');
-    const time = new Date(agendamento.dataHora).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-
-    return `❌ *CANCELAR AGENDAMENTO*
-
-Olá *${clienteName}*! 👋
-
-🗓️ *Agendamento a cancelar:*
-• Data: ${date}
-• Horário: ${time}
-• Serviço: ${agendamento.nomeServico}
-• Barbeiro: ${agendamento.barbeiro.nome}
-• Local: ${agendamento.barbearia.nome}
-
-⚠️ *Para cancelar:*
-Entre em contato diretamente com a barbearia pelo telefone ou presencialmente.
-
-📞 *Importante:*
-Cancelamentos devem ser feitos com antecedência para evitar taxas.
-
----
-💈 _Sistema de Agendamentos_`;
-  }
-
-  // Template para contato da barbearia
-  static contatoBarbearia(barbearia) {
-    return `📞 *CONTATO - ${barbearia.nome}*
-
-👤 *Proprietário:* ${barbearia.nomeProprietario}
-📧 *Email:* ${barbearia.email}
-${barbearia.telefone ? `📱 *Telefone:* ${barbearia.telefone}` : ''}
-
-🌐 *Acesso Online:*
-${barbearia.nomeUrl}
-
-⏰ *Horário de Funcionamento:*
-Entre em contato para mais informações!
-
----
-💈 *${barbearia.nome}*
-_Sua beleza é nossa prioridade!_`;
   }
 }
 

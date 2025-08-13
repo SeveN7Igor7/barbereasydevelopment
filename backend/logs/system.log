@@ -51,19 +51,3 @@
 {"timestamp":"2025-08-13T19:13:06.161Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
 {"timestamp":"2025-08-13T19:13:07.040Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
 {"timestamp":"2025-08-13T19:13:31.388Z","level":"SYSTEM","message":"Diretório criado: C:\\Users\\igorv\\Desktop\\barbereasy\\barbereasy\\backend\\images\\1"}
-{"timestamp":"2025-08-13T21:35:50.675Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
-{"timestamp":"2025-08-13T21:35:50.676Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
-{"timestamp":"2025-08-13T21:35:50.957Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
-{"timestamp":"2025-08-13T21:37:39.014Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
-{"timestamp":"2025-08-13T21:37:39.024Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
-{"timestamp":"2025-08-13T21:37:43.669Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
-{"timestamp":"2025-08-13T21:37:43.670Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
-{"timestamp":"2025-08-13T21:37:43.900Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
-{"timestamp":"2025-08-13T21:46:04.415Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
-{"timestamp":"2025-08-13T21:46:04.618Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
-{"timestamp":"2025-08-13T21:46:28.319Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
-{"timestamp":"2025-08-13T21:46:28.320Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
-{"timestamp":"2025-08-13T21:46:28.588Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
-{"timestamp":"2025-08-13T21:47:14.050Z","level":"SYSTEM","message":"Forçando nova autenticação do WhatsApp via API"}
-{"timestamp":"2025-08-13T21:59:53.122Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
-{"timestamp":"2025-08-13T21:59:53.204Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}

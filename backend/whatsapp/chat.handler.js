@@ -1,231 +1,550 @@
-const { PrismaClient } = require('@prisma/client');
-const MessageTemplates = require('./message.templates');
+const { PrismaClient } = require("@prisma/client");
+const MessageTemplates = require("./message.templates");
 const prisma = new PrismaClient();
 
+// Armazenar sessões de usuários
+const userSessions = new Map();
+
+// Estados da sessão
+const SESSION_STATES = {
+  INITIAL: "initial",
+  CHOOSING_LOGIN_TYPE: "choosing_login_type",
+  BARBEARIA_LOGIN_CONFIRM: "barbearia_login_confirm",
+  BARBEARIA_MENU: "barbearia_menu",
+  BARBEARIA_AGENDAMENTOS_PENDENTES: "barbearia_agendamentos_pendentes",
+  BARBEARIA_CANCELAR_AGENDAMENTO_SELECT: "barbearia_cancelar_agendamento_select",
+  CLIENTE_LOGIN_CONFIRM: "cliente_login_confirm",
+  CLIENTE_MENU: "cliente_menu",
+  CLIENTE_AGENDAMENTOS: "cliente_agendamentos",
+  CLIENTE_HISTORICO: "cliente_historico",
+  CLIENTE_SERVICOS: "cliente_servicos",
+  CLIENTE_BARBEIROS: "cliente_barbeiros",
+};
+
 class ChatHandler {
-  
-  // Processar mensagens recebidas
   static async processMessage(phoneNumber, messageText, whatsappService) {
     try {
-      const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace('@s.whatsapp.net', '');
-      const message = messageText.toLowerCase().trim();
-      
+      const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+      const message = messageText.trim();
+
       console.log(`📨 Mensagem recebida de ${cleanNumber}: "${messageText}"`);
 
-      // Verificar se é uma barbearia
-      const barbearia = await prisma.barbearia.findFirst({
-        where: { telefone: cleanNumber }
-      });
+      let session = userSessions.get(cleanNumber);
 
+      // Se a mensagem for '0' ou 'voltar', tentar voltar um passo na sessão
+      if (message === "0" || message.toLowerCase() === "voltar") {
+        if (session) {
+          // Se estiver no menu principal, não fazer nada (já está no menu principal)
+          if (session.step === SESSION_STATES.BARBEARIA_MENU || session.step === SESSION_STATES.CLIENTE_MENU) {
+            if (session.userType === "barbearia") {
+              await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+            } else if (session.userType === "cliente") {
+              await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+            }
+            return;
+          }
+          
+          // Para outros estados, voltar ao menu principal mantendo a sessão
+          if (session.userType === "barbearia") {
+            session.step = SESSION_STATES.BARBEARIA_MENU;
+            userSessions.set(cleanNumber, session);
+            await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+          } else if (session.userType === "cliente") {
+            session.step = SESSION_STATES.CLIENTE_MENU;
+            userSessions.set(cleanNumber, session);
+            await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+          } else {
+            // Se não tiver tipo de usuário definido, reiniciar
+            userSessions.delete(cleanNumber);
+            return await this.offerLoginOptions(cleanNumber, whatsappService, phoneNumber);
+          }
+          return;
+        } else {
+          // Se não houver sessão, tentar identificar o usuário automaticamente
+          const barbearia = await this.findBarbearia(cleanNumber);
+          const cliente = await this.findCliente(cleanNumber);
+
+          if (barbearia) {
+            session = { step: SESSION_STATES.BARBEARIA_MENU, userType: "barbearia", userId: barbearia.id, userData: barbearia };
+            userSessions.set(cleanNumber, session);
+            await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(barbearia.nome));
+            return;
+          } else if (cliente) {
+            session = { step: SESSION_STATES.CLIENTE_MENU, userType: "cliente", userId: cliente.id, userData: cliente };
+            userSessions.set(cleanNumber, session);
+            await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(cliente.nome));
+            return;
+          } else {
+            // Se não identificado, iniciar o fluxo de escolha de login
+            return await this.offerLoginOptions(cleanNumber, whatsappService, phoneNumber);
+          }
+        }
+      }
+
+      if (!session) {
+        // Tentar identificar o usuário se não houver sessão
+        const barbearia = await this.findBarbearia(cleanNumber);
+        const cliente = await this.findCliente(cleanNumber);
+
+        if (barbearia) {
+          session = { step: SESSION_STATES.BARBEARIA_MENU, userType: "barbearia", userId: barbearia.id, userData: barbearia };
+          userSessions.set(cleanNumber, session);
+          // Enviar menu da barbearia diretamente
+          await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(barbearia.nome));
+          return;
+        } else if (cliente) {
+          session = { step: SESSION_STATES.CLIENTE_MENU, userType: "cliente", userId: cliente.id, userData: cliente };
+          userSessions.set(cleanNumber, session);
+          // Enviar menu do cliente diretamente
+          await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(cliente.nome));
+          return;
+        } else {
+          // Se não identificado, iniciar o fluxo de escolha de login
+          session = { step: SESSION_STATES.CHOOSING_LOGIN_TYPE };
+          userSessions.set(cleanNumber, session);
+          return await this.offerLoginOptions(cleanNumber, whatsappService, phoneNumber);
+        }
+      }
+
+      // Processar mensagem com sessão ativa
+      await this.handleSessionMessage(session, message, whatsappService, phoneNumber);
+
+    } catch (error) {
+      console.error("❌ Erro ao processar mensagem:", error);
+      await whatsappService.sendMessage(phoneNumber, "❌ Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.");
+      userSessions.delete(cleanNumber); // Limpa a sessão em caso de erro grave
+    }
+  }
+
+  static async offerLoginOptions(cleanNumber, whatsappService, phoneNumber) {
+    const welcomeMessage = MessageTemplates.initialGreeting();
+    userSessions.set(cleanNumber, { step: SESSION_STATES.CHOOSING_LOGIN_TYPE });
+    await whatsappService.sendMessage(phoneNumber, welcomeMessage);
+  }
+
+  static async handleSessionMessage(session, message, whatsappService, phoneNumber, isBackCommand = false) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+
+    // Salvar estado anterior para a opção 'voltar'
+    if (!isBackCommand && session.step !== SESSION_STATES.INITIAL) {
+      session.prevState = session.step;
+    }
+
+    switch (session.step) {
+      case SESSION_STATES.CHOOSING_LOGIN_TYPE:
+        await this.handleChoosingLoginType(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.BARBEARIA_LOGIN_CONFIRM:
+        await this.handleBarbeariaLoginConfirm(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.BARBEARIA_MENU:
+        await this.handleBarbeariaMenu(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.BARBEARIA_AGENDAMENTOS_PENDENTES:
+        await this.handleBarbeariaAgendamentosPendentes(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.BARBEARIA_CANCELAR_AGENDAMENTO_SELECT:
+        await this.handleBarbeariaCancelamentoSelect(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_LOGIN_CONFIRM:
+        await this.handleClienteLoginConfirm(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_MENU:
+        await this.handleClienteMenu(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_AGENDAMENTOS:
+        await this.handleClienteAgendamentos(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_HISTORICO:
+        await this.handleClienteHistorico(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_SERVICOS:
+        await this.handleClienteServicos(session, message, whatsappService, phoneNumber);
+        break;
+      case SESSION_STATES.CLIENTE_BARBEIROS:
+        await this.handleClienteBarbeiros(session, message, whatsappService, phoneNumber);
+        break;
+      default:
+        // Caso o estado seja desconhecido, reiniciar a sessão
+        userSessions.delete(cleanNumber);
+        await whatsappService.sendMessage(phoneNumber, "❌ Sua sessão expirou ou ocorreu um erro. Por favor, digite 'Oi' para recomeçar.");
+        break;
+    }
+  }
+
+  static async handleChoosingLoginType(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "1") {
+      session.step = SESSION_STATES.BARBEARIA_LOGIN_CONFIRM;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.confirmBarbeariaLogin(cleanNumber));
+    } else if (message === "2") {
+      session.step = SESSION_STATES.CLIENTE_LOGIN_CONFIRM;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.confirmClienteLogin(cleanNumber));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, "❌ Opção inválida. Por favor, digite '1' para Barbearia ou '2' para Cliente.");
+    }
+  }
+
+  static async handleBarbeariaLoginConfirm(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "1") {
+      const barbearia = await this.findBarbearia(cleanNumber);
       if (barbearia) {
-        return await this.handleBarbeariaMessage(barbearia, message, whatsappService, phoneNumber);
+        session.step = SESSION_STATES.BARBEARIA_MENU;
+        session.userType = "barbearia";
+        session.userId = barbearia.id;
+        session.userData = barbearia;
+        userSessions.set(cleanNumber, session);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaLoginSuccess(barbearia.nome));
+      } else {
+        userSessions.delete(cleanNumber);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaNotFound(cleanNumber));
       }
+    } else if (message === "2") {
+      userSessions.delete(cleanNumber);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.incorrectNumber());
+    } else {
+      await whatsappService.sendMessage(phoneNumber, "❌ Opção inválida. Digite '1' para confirmar ou '2' para corrigir.");
+    }
+  }
 
-      // Verificar se é um cliente
-      const cliente = await prisma.cliente.findFirst({
-        where: { telefone: cleanNumber }
+  static async handleBarbeariaMenu(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    const barbearia = session.userData;
+    
+    switch (message) {
+      case "1": // Agendamentos de Hoje
+        const agendamentosHoje = await this.getAgendamentosHoje(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.agendamentosHoje(agendamentosHoje));
+        break;
+      case "2": // Agendamentos Pendentes
+        session.step = SESSION_STATES.BARBEARIA_AGENDAMENTOS_PENDENTES;
+        userSessions.set(cleanNumber, session);
+        const agendamentosPendentes = await this.getAgendamentosPendentes(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.agendamentosPendentes(agendamentosPendentes));
+        break;
+      case "3": // Agendamentos de Amanhã
+        const agendamentosAmanha = await this.getAgendamentosAmanha(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.agendamentosAmanha(agendamentosAmanha));
+        break;
+      case "4": // Agendamentos da Semana
+        const agendamentosSemana = await this.getAgendamentosSemana(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.agendamentosSemana(agendamentosSemana));
+        break;
+      case "5": // Cancelar Agendamento
+        const agendamentosParaCancelar = await this.getAgendamentosPendentes(barbearia.id);
+        if (agendamentosParaCancelar.length === 0) {
+          await whatsappService.sendMessage(phoneNumber, MessageTemplates.noAppointmentsToCancel());
+        } else {
+          session.step = SESSION_STATES.BARBEARIA_CANCELAR_AGENDAMENTO_SELECT;
+          session.agendamentos = agendamentosParaCancelar; // Armazena os agendamentos na sessão
+          userSessions.set(cleanNumber, session);
+          await whatsappService.sendMessage(phoneNumber, MessageTemplates.listAgendamentosParaCancelar(agendamentosParaCancelar, barbearia.nome));
+        }
+        break;
+      case "6": // Resumo da Barbearia
+        const resumo = await this.getResumoBarbearia(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.resumoBarbearia(resumo, barbearia.nome));
+        break;
+      case "7": // Lista de Barbeiros
+        const barbeiros = await this.getBarbeiros(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.listaBarbeiros(barbeiros));
+        break;
+      case "8": // Lista de Serviços
+        const servicos = await this.getServicos(barbearia.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.listaServicos(servicos));
+        break;
+      case "0": // Voltar/Menu Principal
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(barbearia.nome));
+        break;
+      default:
+        // Para opções inválidas, mostrar mensagem de erro mas manter no menu
+        await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite um número de 1 a 8, ou 0 para o menu principal.
+
+${MessageTemplates.barbeariaMenu(barbearia.nome)}`);
+        break;
+    }
+  }
+
+  static async handleBarbeariaAgendamentosPendentes(session, message, whatsappService, phoneNumber) {
+    // Após listar agendamentos pendentes, o usuário pode querer cancelar ou voltar
+    if (message === "1") { // Opção de cancelar
+      const agendamentosParaCancelar = await this.getAgendamentosPendentes(session.userId);
+      if (agendamentosParaCancelar.length === 0) {
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.noAppointmentsToCancel());
+        session.step = SESSION_STATES.BARBEARIA_MENU; // Volta para o menu principal
+        userSessions.set(whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", ""), session);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+      } else {
+        session.step = SESSION_STATES.BARBEARIA_CANCELAR_AGENDAMENTO_SELECT;
+        session.agendamentos = agendamentosParaCancelar;
+        userSessions.set(whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", ""), session);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.listAgendamentosParaCancelar(agendamentosParaCancelar, session.userData.nome));
+      }
+    } else if (message === "0") { // Voltar
+      session.step = SESSION_STATES.BARBEARIA_MENU;
+      userSessions.set(whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", ""), session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, "❌ Opção inválida. Digite '1' para cancelar ou '0' para voltar ao menu principal.");
+    }
+  }
+
+  static async handleBarbeariaCancelamentoSelect(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    const numeroAgendamento = parseInt(message);
+
+    if (message === "0") { // Voltar
+      session.step = SESSION_STATES.BARBEARIA_MENU;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+      return;
+    }
+
+    if (isNaN(numeroAgendamento) || numeroAgendamento < 1 || numeroAgendamento > session.agendamentos.length) {
+      await whatsappService.sendMessage(phoneNumber, `❌ Número inválido. Digite um número entre 1 e ${session.agendamentos.length}, ou '0' para voltar.`);
+      return;
+    }
+
+    const agendamento = session.agendamentos[numeroAgendamento - 1];
+
+    try {
+      await prisma.agendamento.update({
+        where: { id: agendamento.id },
+        data: { status: "CANCELADO" }
       });
 
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaCancelConfirmation(agendamento, session.userData.nome));
+      await this.notifyClienteCancelamento(agendamento, whatsappService);
+
+      session.step = SESSION_STATES.BARBEARIA_MENU; // Volta para o menu principal
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+
+    } catch (error) {
+      console.error("❌ Erro ao cancelar agendamento:", error);
+      await whatsappService.sendMessage(phoneNumber, "❌ Erro ao cancelar agendamento. Tente novamente.");
+      session.step = SESSION_STATES.BARBEARIA_MENU; // Volta para o menu principal
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeariaMenu(session.userData.nome));
+    }
+  }
+
+  static async handleClienteLoginConfirm(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "1") {
+      const cliente = await this.findCliente(cleanNumber);
       if (cliente) {
-        return await this.handleClienteMessage(cliente, message, whatsappService, phoneNumber);
+        session.step = SESSION_STATES.CLIENTE_MENU;
+        session.userType = "cliente";
+        session.userId = cliente.id;
+        session.userData = cliente;
+        userSessions.set(cleanNumber, session);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteLoginSuccess(cliente.nome));
+      } else {
+        userSessions.delete(cleanNumber);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteNotFound(cleanNumber));
       }
-
-      // Usuário não identificado
-      const welcomeMessage = `👋 Olá! Não consegui identificar seu número em nosso sistema.
-
-📋 *Para se cadastrar:*
-• Entre em contato com uma de nossas barbearias
-• Ou acesse nossa plataforma online
-
-💈 *Sistema de Agendamentos*
-_Sua beleza é nossa prioridade!_`;
-
-      await whatsappService.sendMessage(phoneNumber, welcomeMessage);
-      
-    } catch (error) {
-      console.error('❌ Erro ao processar mensagem:', error);
+    } else if (message === "2") {
+      userSessions.delete(cleanNumber);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.incorrectNumber());
+    } else {
+      await whatsappService.sendMessage(phoneNumber, "❌ Opção inválida. Digite '1' para confirmar ou '2' para corrigir.");
     }
   }
 
-  // Processar mensagens da barbearia
-  static async handleBarbeariaMessage(barbearia, message, whatsappService, phoneNumber) {
-    try {
-      if (message.includes('menu') || message.includes('ajuda') || message.includes('comandos')) {
-        const menuMessage = MessageTemplates.barbeariaMenu(barbearia.nome);
-        await whatsappService.sendMessage(phoneNumber, menuMessage);
-        return;
-      }
-
-      if (message.includes('agendamentos hoje') || message.includes('hoje')) {
-        const agendamentos = await this.getAgendamentosHoje(barbearia.id);
-        const response = MessageTemplates.agendamentosHoje(agendamentos);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('agendamentos amanha') || message.includes('amanhã')) {
-        const agendamentos = await this.getAgendamentosAmanha(barbearia.id);
-        const response = MessageTemplates.agendamentosAmanha(agendamentos);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('semana') || message.includes('próximos 7 dias')) {
-        const agendamentos = await this.getAgendamentosSemana(barbearia.id);
-        const response = MessageTemplates.agendamentosSemana(agendamentos);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('status') || message.includes('resumo')) {
-        const resumo = await this.getResumoBarbearia(barbearia.id);
-        const response = MessageTemplates.resumoBarbearia(resumo, barbearia.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('barbeiros') || message.includes('equipe')) {
-        const barbeiros = await this.getBarbeiros(barbearia.id);
-        const response = MessageTemplates.listaBarbeiros(barbeiros);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('servicos') || message.includes('serviços')) {
-        const servicos = await this.getServicos(barbearia.id);
-        const response = MessageTemplates.listaServicos(servicos);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('clientes') || message.includes('cadastrados')) {
-        const clientes = await this.getClientesRecentes(barbearia.id);
-        const response = MessageTemplates.clientesRecentes(clientes);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('faturamento') || message.includes('receita')) {
-        const faturamento = await this.getFaturamentoMes(barbearia.id);
-        const response = MessageTemplates.faturamentoMes(faturamento, barbearia.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('cancelados') || message.includes('cancelamentos')) {
-        const cancelados = await this.getAgendamentosCancelados(barbearia.id);
-        const response = MessageTemplates.agendamentosCancelados(cancelados);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      // Comando não reconhecido
-      const helpMessage = `❓ Comando não reconhecido.
-
-Digite *menu* para ver todos os comandos disponíveis.
-
-💈 *${barbearia.nome}*`;
-
-      await whatsappService.sendMessage(phoneNumber, helpMessage);
-
-    } catch (error) {
-      console.error('❌ Erro ao processar mensagem da barbearia:', error);
-    }
-  }
-
-  // Processar mensagens do cliente
-  static async handleClienteMessage(cliente, message, whatsappService, phoneNumber) {
-    try {
-      if (message.includes('menu') || message.includes('ajuda') || message.includes('comandos')) {
-        const menuMessage = MessageTemplates.clienteMenu(cliente.nome);
-        await whatsappService.sendMessage(phoneNumber, menuMessage);
-        return;
-      }
-
-      if (message.includes('meus agendamentos') || message.includes('agendamentos')) {
-        const agendamentos = await this.getAgendamentosCliente(cliente.id);
-        const response = MessageTemplates.agendamentosCliente(agendamentos, cliente.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('proximo') || message.includes('próximo')) {
+  static async handleClienteMenu(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    const cliente = session.userData;
+    
+    switch (message) {
+      case "1": // Meus Agendamentos
+        session.step = SESSION_STATES.CLIENTE_AGENDAMENTOS;
+        userSessions.set(cleanNumber, session);
+        const agendamentosCliente = await this.getAgendamentosCliente(cliente.id);
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.agendamentosCliente(agendamentosCliente, cliente.nome));
+        break;
+      case "2": // Próximo Agendamento
         const proximoAgendamento = await this.getProximoAgendamento(cliente.id);
-        const response = MessageTemplates.proximoAgendamento(proximoAgendamento, cliente.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('historico') || message.includes('histórico')) {
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.proximoAgendamento(proximoAgendamento, cliente.nome));
+        break;
+      case "3": // Histórico
+        session.step = SESSION_STATES.CLIENTE_HISTORICO;
+        userSessions.set(cleanNumber, session);
         const historico = await this.getHistoricoCliente(cliente.id);
-        const response = MessageTemplates.historicoCliente(historico, cliente.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('servicos') || message.includes('serviços') || message.includes('precos') || message.includes('preços')) {
-        const barbearia = await prisma.barbearia.findUnique({
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.historicoCliente(historico, cliente.nome));
+        break;
+      case "4": // Serviços
+        session.step = SESSION_STATES.CLIENTE_SERVICOS;
+        userSessions.set(cleanNumber, session);
+        const barbeariaServicos = await prisma.barbearia.findUnique({
           where: { id: cliente.barbeariaId },
           include: { servicos: true }
         });
-        const response = MessageTemplates.servicosParaCliente(barbearia.servicos, barbearia.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      if (message.includes('barbeiros') || message.includes('equipe')) {
-        const barbearia = await prisma.barbearia.findUnique({
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.servicosParaCliente(barbeariaServicos.servicos, barbeariaServicos.nome));
+        break;
+      case "5": // Barbeiros
+        session.step = SESSION_STATES.CLIENTE_BARBEIROS;
+        userSessions.set(cleanNumber, session);
+        const barbeariaBarbeiros = await prisma.barbearia.findUnique({
           where: { id: cliente.barbeariaId },
           include: { barbeiros: { where: { ativo: true } } }
         });
-        const response = MessageTemplates.barbeirosParaCliente(barbearia.barbeiros, barbearia.nome);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.barbeirosParaCliente(barbeariaBarbeiros.barbeiros, barbeariaBarbeiros.nome));
+        break;
+      case "0": // Voltar/Menu Principal
+        await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(cliente.nome));
+        break;
+      default:
+        // Para opções inválidas, mostrar mensagem de erro mas manter no menu
+        await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite um número de 1 a 5, ou 0 para o menu principal.
 
-      if (message.includes('cancelar') && message.includes('agendamento')) {
-        const proximoAgendamento = await this.getProximoAgendamento(cliente.id);
-        if (proximoAgendamento) {
-          const response = MessageTemplates.cancelarAgendamento(proximoAgendamento, cliente.nome);
-          await whatsappService.sendMessage(phoneNumber, response);
-        } else {
-          const response = `❌ *CANCELAMENTO*
-
-Olá *${cliente.nome}*! 👋
-
-Você não possui agendamentos futuros para cancelar.
-
----
-💈 _Sistema de Agendamentos_`;
-          await whatsappService.sendMessage(phoneNumber, response);
-        }
-        return;
-      }
-
-      if (message.includes('contato') || message.includes('telefone') || message.includes('endereço')) {
-        const barbearia = await prisma.barbearia.findUnique({
-          where: { id: cliente.barbeariaId }
-        });
-        const response = MessageTemplates.contatoBarbearia(barbearia);
-        await whatsappService.sendMessage(phoneNumber, response);
-        return;
-      }
-
-      // Comando não reconhecido
-      const helpMessage = `❓ Comando não reconhecido.
-
-Digite *menu* para ver todos os comandos disponíveis.
-
-👤 *${cliente.nome}*`;
-
-      await whatsappService.sendMessage(phoneNumber, helpMessage);
-
-    } catch (error) {
-      console.error('❌ Erro ao processar mensagem do cliente:', error);
+${MessageTemplates.clienteMenu(cliente.nome)}`);
+        break;
     }
   }
 
-  // Métodos auxiliares para buscar dados
+  static async handleClienteAgendamentos(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "0") { // Voltar
+      session.step = SESSION_STATES.CLIENTE_MENU;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite '0' para voltar ao menu principal.
+
+${MessageTemplates.clienteMenu(session.userData.nome)}`);
+    }
+  }
+
+  static async handleClienteHistorico(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "0") { // Voltar
+      session.step = SESSION_STATES.CLIENTE_MENU;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite '0' para voltar ao menu principal.
+
+${MessageTemplates.clienteMenu(session.userData.nome)}`);
+    }
+  }
+
+  static async handleClienteServicos(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "0") { // Voltar
+      session.step = SESSION_STATES.CLIENTE_MENU;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite '0' para voltar ao menu principal.
+
+${MessageTemplates.clienteMenu(session.userData.nome)}`);
+    }
+  }
+
+  static async handleClienteBarbeiros(session, message, whatsappService, phoneNumber) {
+    const cleanNumber = whatsappService.formatPhoneNumber(phoneNumber).replace("@s.whatsapp.net", "");
+    if (message === "0") { // Voltar
+      session.step = SESSION_STATES.CLIENTE_MENU;
+      userSessions.set(cleanNumber, session);
+      await whatsappService.sendMessage(phoneNumber, MessageTemplates.clienteMenu(session.userData.nome));
+    } else {
+      await whatsappService.sendMessage(phoneNumber, `❌ Opção inválida. Digite '0' para voltar ao menu principal.
+
+${MessageTemplates.clienteMenu(session.userData.nome)}`);
+    }
+  }
+
+  // Buscar barbearia pelo telefone (com formatação especial)
+  static async findBarbearia(phoneNumber) {
+    console.log(`🔍 Buscando barbearia com número: ${phoneNumber}`);
+    
+    // Primeiro, tentar buscar com o número original
+    let barbearia = await prisma.barbearia.findFirst({
+      where: { telefone: phoneNumber }
+    });
+
+    console.log(`📞 Primeira busca (${phoneNumber}): ${barbearia ? 'ENCONTRADO' : 'NÃO ENCONTRADO'}`);
+
+    if (!barbearia) {
+      // Se não encontrar, tentar com o 9 adicional após o DDD
+      // Exemplo: 558994624921 -> 5589994624921
+      if (phoneNumber.startsWith("55") && phoneNumber.length === 12) {
+        const numberWithExtra9 = phoneNumber.substring(0, 4) + "9" + phoneNumber.substring(4);
+        console.log(`🔄 Tentando busca com 9 adicional: ${numberWithExtra9}`);
+        
+        barbearia = await prisma.barbearia.findFirst({
+          where: { telefone: numberWithExtra9 }
+        });
+        
+        console.log(`📞 Segunda busca (${numberWithExtra9}): ${barbearia ? 'ENCONTRADO' : 'NÃO ENCONTRADO'}`);
+      } else {
+        console.log(`❌ Número não atende aos critérios para adicionar 9: ${phoneNumber}`);
+      }
+    }
+
+    if (barbearia) {
+      console.log(`✅ Barbearia encontrada: ${barbearia.nome} (ID: ${barbearia.id})`);
+    } else {
+      console.log(`❌ Barbearia não encontrada em nenhuma das tentativas`);
+    }
+
+    return barbearia;
+  }
+  // Buscar cliente pelo telefone (com formatação especial)
+  static async findCliente(phoneNumber) {
+    console.log(`🔍 Buscando cliente com número: ${phoneNumber}`);
+    
+    // Primeiro, tentar buscar com o número original
+    let cliente = await prisma.cliente.findFirst({
+      where: { telefone: phoneNumber }
+    });
+
+    console.log(`📞 Primeira busca (${phoneNumber}): ${cliente ? 'ENCONTRADO' : 'NÃO ENCONTRADO'}`);
+
+    if (!cliente) {
+      // Se não encontrar, tentar com o 9 adicional após o DDD
+      // Exemplo: 558994624921 -> 5589994624921
+      if (phoneNumber.startsWith("55") && phoneNumber.length === 12) {
+        const numberWithExtra9 = phoneNumber.substring(0, 4) + "9" + phoneNumber.substring(4);
+        console.log(`🔄 Tentando busca com 9 adicional: ${numberWithExtra9}`);
+        
+        cliente = await prisma.cliente.findFirst({
+          where: { telefone: numberWithExtra9 }
+        });
+        
+        console.log(`📞 Segunda busca (${numberWithExtra9}): ${cliente ? 'ENCONTRADO' : 'NÃO ENCONTRADO'}`);
+      } else {
+        console.log(`❌ Número não atende aos critérios para adicionar 9: ${phoneNumber}`);
+      }
+    }
+
+    if (cliente) {
+      console.log(`✅ Cliente encontrado: ${cliente.nome} (ID: ${cliente.id})`);
+    } else {
+      console.log(`❌ Cliente não encontrado em nenhuma das tentativas`);
+    }
+
+    return cliente;
+  }
+
+  // Notificar cliente sobre cancelamento
+  static async notifyClienteCancelamento(agendamento, whatsappService) {
+    try {
+      let clientePhone = agendamento.cliente.telefone;
+      if (clientePhone.startsWith("55") && clientePhone.length === 13) {
+        clientePhone = clientePhone.substring(0, 4) + clientePhone.substring(5);
+      }
+      await whatsappService.sendMessage(clientePhone + "@s.whatsapp.net", MessageTemplates.clientAppointmentCanceled(agendamento));
+    } catch (error) {
+      console.error("❌ Erro ao notificar cliente sobre cancelamento:", error);
+    }
+  }
+
+  // Métodos auxiliares para buscar dados (mantidos do código anterior)
   static async getAgendamentosHoje(barbeariaId) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -239,13 +558,30 @@ Digite *menu* para ver todos os comandos disponíveis.
           gte: hoje,
           lt: amanha
         },
-        status: { not: 'CANCELADO' }
+        status: { not: "CANCELADO" }
       },
       include: {
         cliente: true,
         barbeiro: true
       },
-      orderBy: { dataHora: 'asc' }
+      orderBy: { dataHora: "asc" }
+    });
+  }
+
+  static async getAgendamentosPendentes(barbeariaId) {
+    const hoje = new Date();
+
+    return await prisma.agendamento.findMany({
+      where: {
+        barbeariaId,
+        dataHora: { gte: hoje },
+        status: "AGENDAMENTO_PROGRAMADO"
+      },
+      include: {
+        cliente: true,
+        barbeiro: true
+      },
+      orderBy: { dataHora: "asc" }
     });
   }
 
@@ -263,13 +599,13 @@ Digite *menu* para ver todos os comandos disponíveis.
           gte: amanha,
           lt: depoisAmanha
         },
-        status: { not: 'CANCELADO' }
+        status: { not: "CANCELADO" }
       },
       include: {
         cliente: true,
         barbeiro: true
       },
-      orderBy: { dataHora: 'asc' }
+      orderBy: { dataHora: "asc" }
     });
   }
 
@@ -286,13 +622,13 @@ Digite *menu* para ver todos os comandos disponíveis.
           gte: hoje,
           lt: proximaSemana
         },
-        status: { not: 'CANCELADO' }
+        status: { not: "CANCELADO" }
       },
       include: {
         cliente: true,
         barbeiro: true
       },
-      orderBy: { dataHora: 'asc' }
+      orderBy: { dataHora: "asc" }
     });
   }
 
@@ -307,7 +643,7 @@ Digite *menu* para ver todos os comandos disponíveis.
         where: {
           barbeariaId,
           dataHora: { gte: hoje, lt: amanha },
-          status: { not: 'CANCELADO' }
+          status: { not: "CANCELADO" }
         }
       }),
       prisma.barbeiro.count({
@@ -317,7 +653,7 @@ Digite *menu* para ver todos os comandos disponíveis.
         where: { barbeariaId }
       }),
       prisma.cliente.count({
-        where: { barbeariaId, status: 'ATIVA' }
+        where: { barbeariaId, status: "ATIVA" }
       })
     ]);
 
@@ -332,14 +668,14 @@ Digite *menu* para ver todos os comandos disponíveis.
   static async getBarbeiros(barbeariaId) {
     return await prisma.barbeiro.findMany({
       where: { barbeariaId, ativo: true },
-      orderBy: { nome: 'asc' }
+      orderBy: { nome: "asc" }
     });
   }
 
   static async getServicos(barbeariaId) {
     return await prisma.servico.findMany({
       where: { barbeariaId },
-      orderBy: { nome: 'asc' }
+      orderBy: { nome: "asc" }
     });
   }
 
@@ -350,13 +686,13 @@ Digite *menu* para ver todos os comandos disponíveis.
       where: {
         clienteId,
         dataHora: { gte: hoje },
-        status: { not: 'CANCELADO' }
+        status: { not: "CANCELADO" }
       },
       include: {
         barbeiro: true,
         barbearia: true
       },
-      orderBy: { dataHora: 'asc' },
+      orderBy: { dataHora: "asc" },
       take: 5
     });
   }
@@ -368,13 +704,13 @@ Digite *menu* para ver todos os comandos disponíveis.
       where: {
         clienteId,
         dataHora: { gte: hoje },
-        status: { not: 'CANCELADO' }
+        status: { not: "CANCELADO" }
       },
       include: {
         barbeiro: true,
         barbearia: true
       },
-      orderBy: { dataHora: 'asc' }
+      orderBy: { dataHora: "asc" }
     });
   }
 
@@ -382,63 +718,14 @@ Digite *menu* para ver todos os comandos disponíveis.
     return await prisma.agendamento.findMany({
       where: {
         clienteId,
-        status: 'ATENDIDO'
+        status: "ATENDIDO"
       },
       include: {
         barbeiro: true,
         barbearia: true
       },
-      orderBy: { dataHora: 'desc' },
+      orderBy: { dataHora: "desc" },
       take: 5
-    });
-  }
-
-  static async getClientesRecentes(barbeariaId) {
-    return await prisma.cliente.findMany({
-      where: { barbeariaId, status: 'ATIVA' },
-      orderBy: { id: 'desc' },
-      take: 10
-    });
-  }
-
-  static async getFaturamentoMes(barbeariaId) {
-    const inicioMes = new Date();
-    inicioMes.setDate(1);
-    inicioMes.setHours(0, 0, 0, 0);
-    
-    const fimMes = new Date(inicioMes);
-    fimMes.setMonth(fimMes.getMonth() + 1);
-
-    const agendamentos = await prisma.agendamento.findMany({
-      where: {
-        barbeariaId,
-        dataHora: { gte: inicioMes, lt: fimMes },
-        status: 'ATENDIDO'
-      }
-    });
-
-    const total = agendamentos.reduce((sum, agendamento) => sum + agendamento.precoServico, 0);
-    const quantidade = agendamentos.length;
-
-    return { total, quantidade, mes: inicioMes.getMonth() + 1 };
-  }
-
-  static async getAgendamentosCancelados(barbeariaId) {
-    const hoje = new Date();
-    hoje.setDate(hoje.getDate() - 7); // Últimos 7 dias
-
-    return await prisma.agendamento.findMany({
-      where: {
-        barbeariaId,
-        status: 'CANCELADO',
-        dataHora: { gte: hoje }
-      },
-      include: {
-        cliente: true,
-        barbeiro: true
-      },
-      orderBy: { dataHora: 'desc' },
-      take: 10
     });
   }
 }
