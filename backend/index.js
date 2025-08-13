@@ -1,4 +1,5 @@
-const express = require('express');
+const path = require("path");
+const express = require("express");
 const cors = require('cors');
 const http = require('http');
 const barbeariaRoutes = require('./barbearia/barbearia.routes');
@@ -57,7 +58,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Usa as rotas da barbearia, prefixadas por /barbearias
+app.use("/images", express.static(path.join(__dirname, "images")));
 app.use('/barbearias', barbeariaRoutes);
 
 // Usa as rotas de cliente, prefixadas por /clientes

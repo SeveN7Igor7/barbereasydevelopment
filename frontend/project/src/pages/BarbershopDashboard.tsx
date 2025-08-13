@@ -242,7 +242,7 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
               <div className="flex items-center">
                 {barbearia.logoUrl ? (
                   <img
-                    src={apiService.getLogoUrl(barbearia.id)}
+                    src={`http://localhost:3000${barbearia.logoUrl}`}
                     alt={`Logo ${barbearia.nome}`}
                     className="h-12 w-12 rounded-lg object-cover mr-3"
                     onError={(e) => {

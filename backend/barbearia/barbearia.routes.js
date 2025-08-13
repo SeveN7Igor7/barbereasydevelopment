@@ -15,12 +15,12 @@ router.post('/:id/horarios', barbeariaController.createOrUpdateHorarios);
 router.put('/:id/horarios/:horarioId', barbeariaController.updateHorario);
 router.delete('/:id/horarios/:horarioId', barbeariaController.deleteHorario);
 
-// Rotas para upload de imagens
-router.post('/:id/upload/logo', uploadLogo, barbeariaController.uploadLogo);
-router.post('/:id/upload/banner', uploadBanner, barbeariaController.uploadBanner);
 
-// Rotas para servir imagens
-router.get('/:id/images/logo', serveImage('logo'));
-router.get('/:id/images/banner', serveImage('banner'));
+
+// Rotas para upload de imagens
+router.post("/:id/upload/logo", uploadLogo, barbeariaController.uploadLogo);
+router.post("/:id/upload/banner", uploadBanner, barbeariaController.uploadBanner);
+
+
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const path = require('path');
-const { removeOldImage } = require('../utils/upload');
+
 const logger = require('../utils/logger');
 const prisma = new PrismaClient();
 
@@ -314,18 +314,17 @@ async function uploadLogo(req, res) {
       return res.status(404).json({ error: 'Barbearia não encontrada' });
     }
 
-    // Remover logo antiga se existir
-    removeOldImage(barbeariaId, 'logo');
-
     // Construir URL da nova logo
     const fileExtension = path.extname(req.file.filename);
-    const logoUrl = `/barbearias/${barbeariaId}/images/logo${fileExtension}`;
+    const logoUrl = `/images/${barbeariaId}/${req.file.filename}`;
 
     // Atualizar URL no banco de dados
     await prisma.barbearia.update({
       where: { id: barbeariaId },
       data: { logoUrl }
     });
+
+
 
     logger.info(`Logo atualizada para barbearia ${barbeariaId}`, {
       filename: req.file.filename,
@@ -362,18 +361,17 @@ async function uploadBanner(req, res) {
       return res.status(404).json({ error: 'Barbearia não encontrada' });
     }
 
-    // Remover banner antigo se existir
-    removeOldImage(barbeariaId, 'banner');
-
     // Construir URL do novo banner
     const fileExtension = path.extname(req.file.filename);
-    const bannerUrl = `/barbearias/${barbeariaId}/images/banner${fileExtension}`;
+    const bannerUrl = `/images/${barbeariaId}/${req.file.filename}`;
 
     // Atualizar URL no banco de dados
     await prisma.barbearia.update({
       where: { id: barbeariaId },
       data: { bannerUrl }
     });
+
+
 
     logger.info(`Banner atualizado para barbearia ${barbeariaId}`, {
       filename: req.file.filename,
