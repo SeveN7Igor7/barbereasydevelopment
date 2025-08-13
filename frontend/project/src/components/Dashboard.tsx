@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, User, CreditCard, UserPlus, LogIn } from 'lucide-react';
+import { ChevronDown, User, CreditCard, LogIn } from 'lucide-react';
 
 interface DashboardProps {
   onPageChange: (page: string) => void;
@@ -20,12 +20,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
       name: 'Quero contar com seus serviços',
       icon: <CreditCard className="h-4 w-4" />,
       description: 'Contratar nossos serviços'
-    },
-    {
-      id: 'register',
-      name: 'Criar conta',
-      icon: <UserPlus className="h-4 w-4" />,
-      description: 'Para clientes que irão agendar'
     },
     {
       id: 'login',

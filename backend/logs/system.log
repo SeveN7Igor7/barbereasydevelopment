@@ -23,3 +23,8 @@
 {"timestamp":"2025-08-12T15:39:38.578Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
 {"timestamp":"2025-08-12T15:42:07.108Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
 {"timestamp":"2025-08-12T15:42:07.136Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}
+{"timestamp":"2025-08-13T03:01:54.180Z","level":"SYSTEM","message":"Iniciando servidor do sistema de barbearia..."}
+{"timestamp":"2025-08-13T03:01:54.181Z","level":"SYSTEM","message":"Inicializando sistema WhatsApp..."}
+{"timestamp":"2025-08-13T03:01:54.408Z","level":"SYSTEM","message":"WhatsApp Status: Aguardando conexão"}
+{"timestamp":"2025-08-13T03:06:09.213Z","level":"SYSTEM","message":"Recebido sinal SIGINT, encerrando servidor..."}
+{"timestamp":"2025-08-13T03:06:09.351Z","level":"SYSTEM","message":"Servidor encerrado com sucesso"}

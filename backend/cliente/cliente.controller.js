@@ -44,6 +44,133 @@ exports.createCliente = async (req, res) => {
   }
 };
 
+exports.loginByTelefone = async (req, res) => {
+  const { telefone } = req.body;
+  
+  try {
+    // Adicionar prefixo 55 se não estiver presente
+    let telefoneFormatado = telefone;
+    if (!telefone.startsWith('55')) {
+      telefoneFormatado = '55' + telefone;
+    }
+
+    // Buscar cliente pelo telefone formatado
+    const cliente = await prisma.cliente.findFirst({
+      where: {
+        telefone: telefoneFormatado,
+        status: 'ATIVA'
+      },
+      include: {
+        barbearia: {
+          select: {
+            id: true,
+            nome: true,
+            nomeProprietario: true,
+            nomeUrl: true,
+            logoUrl: true,
+            bannerUrl: true,
+            telefone: true,
+            email: true,
+            ativa: true,
+            plano: true,
+            horarios: {
+              select: {
+                id: true,
+                diaSemana: true,
+                horaInicio: true,
+                horaFim: true
+              }
+            },
+            servicos: {
+              select: {
+                id: true,
+                nome: true,
+                duracaoMin: true,
+                preco: true
+              }
+            },
+            barbeiros: {
+              where: {
+                ativo: true
+              },
+              select: {
+                id: true,
+                nome: true,
+                especialidade: true,
+                ativo: true
+              }
+            }
+          }
+        },
+        agendamentos: {
+          include: {
+            barbeiro: {
+              select: {
+                id: true,
+                nome: true,
+                especialidade: true
+              }
+            },
+            barbearia: {
+              select: {
+                id: true,
+                nome: true,
+                nomeUrl: true
+              }
+            }
+          },
+          orderBy: {
+            dataHora: 'desc'
+          }
+        }
+      }
+    });
+
+    if (!cliente) {
+      return res.status(404).json({ 
+        error: "Cliente não encontrado com este número de telefone.",
+        telefoneFormatado: telefoneFormatado
+      });
+    }
+
+    // Separar agendamentos por status
+    const agendamentosAtivos = cliente.agendamentos.filter(
+      agendamento => agendamento.status === 'AGENDAMENTO_PROGRAMADO'
+    );
+    
+    const agendamentosHistorico = cliente.agendamentos.filter(
+      agendamento => agendamento.status !== 'AGENDAMENTO_PROGRAMADO'
+    );
+
+    // Estruturar resposta completa
+    const responseData = {
+      cliente: {
+        id: cliente.id,
+        nome: cliente.nome,
+        telefone: cliente.telefone,
+        status: cliente.status
+      },
+      barbearia: cliente.barbearia,
+      agendamentos: {
+        ativos: agendamentosAtivos,
+        historico: agendamentosHistorico,
+        total: cliente.agendamentos.length
+      },
+      estatisticas: {
+        totalAgendamentos: cliente.agendamentos.length,
+        agendamentosAtivos: agendamentosAtivos.length,
+        agendamentosFinalizados: agendamentosHistorico.filter(a => a.status === 'ATENDIDO').length,
+        agendamentosCancelados: agendamentosHistorico.filter(a => a.status === 'CANCELADO').length
+      }
+    };
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    console.error("Erro ao fazer login por telefone:", error);
+    res.status(500).json({ error: "Não foi possível realizar o login." });
+  }
+};
+
 exports.getClienteById = async (req, res) => {
   const { id } = req.params;
   try {

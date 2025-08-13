@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, LogIn, Phone, Loader2 } from 'lucide-react';
+import { apiService } from '../services/api';
 
 interface LoginPageProps {
   onBack: () => void;
@@ -7,25 +8,56 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onBack, onPageChange }) => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  const [telefone, setTelefone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const formatTelefone = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara (XX) XXXXX-XXXX
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    return value;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatTelefone(e.target.value);
+    setTelefone(formatted);
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você integraria com o backend para fazer login
-    console.log('Dados do login:', formData);
-    // Redirecionar diretamente para a página de agendamento da barbearia após login bem-sucedido
-    onPageChange('client-booking');
+    setLoading(true);
+    setError('');
+
+    try {
+      // Remove formatação do telefone
+      const telefoneNumeros = telefone.replace(/\D/g, '');
+      
+      if (telefoneNumeros.length !== 11) {
+        setError('Por favor, digite um número de telefone válido com 11 dígitos');
+        setLoading(false);
+        return;
+      }
+
+      const response = await apiService.loginByTelefone(telefoneNumeros);
+      
+      // Salvar dados do cliente no localStorage
+      localStorage.setItem('clienteLogado', JSON.stringify(response));
+      
+      // Redirecionar para a página de agendamento do cliente
+      onPageChange('client-booking');
+      
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      setError(error.message || 'Número de telefone não encontrado. Verifique se você já possui agendamentos em alguma barbearia.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,78 +89,60 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onPageChange }) => {
                 Bem-vindo de volta!
               </h2>
               <p className="text-sm sm:text-base text-gray-600">
-                Acesse sua conta para gerenciar seus agendamentos
+                Digite seu número de telefone para acessar seus agendamentos
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                  Email
+                  Número de Telefone
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    type="tel"
+                    value={telefone}
+                    onChange={handleTelefoneChange}
                     required
+                    maxLength={15}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
-                    placeholder="Seu email"
+                    placeholder="(XX) XXXXX-XXXX"
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Digite apenas números. Exemplo: 85999887766
+                </p>
               </div>
 
-              <div>
-                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                  Senha
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400 transition-colors"
-                    placeholder="Sua senha"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-sm">{error}</p>
                 </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-yellow-400 focus:ring-yellow-400" />
-                  <span className="ml-2 text-sm text-gray-600">Lembrar de mim</span>
-                </label>
-                <button type="button" className="text-sm text-yellow-600 hover:text-yellow-700 self-start sm:self-auto">
-                  Esqueceu a senha?
-                </button>
-              </div>
+              )}
 
               <button
                 type="submit"
-                className="w-full bg-yellow-400 text-black py-3 sm:py-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-300"
+                disabled={loading}
+                className="w-full bg-yellow-400 text-black py-3 sm:py-4 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                Entrar
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar'
+                )}
               </button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Não tem uma conta?{' '}
-                <button className="text-yellow-600 hover:text-yellow-700 font-medium underline">
-                  Criar conta
-                </button>
+                Primeira vez aqui?{' '}
+                <span className="text-gray-500">
+                  Faça seu primeiro agendamento em uma barbearia parceira
+                </span>
               </p>
             </div>
           </div>

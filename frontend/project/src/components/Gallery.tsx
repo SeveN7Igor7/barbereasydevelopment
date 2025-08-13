@@ -1,59 +1,66 @@
 import React from 'react';
+import { CheckCircle, Zap, Shield, TrendingUp } from 'lucide-react';
 
 const Gallery = () => {
-  const images = [
+  const features = [
     {
-      src: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'Dashboard principal'
+      icon: CheckCircle,
+      title: 'Agendamentos Inteligentes',
+      description: 'Sistema automatizado de agendamentos com controle de conflitos e confirmações via WhatsApp.'
     },
     {
-      src: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'Interface de agendamentos'
+      icon: Zap,
+      title: 'IA Integrada',
+      description: 'Assistente virtual que ajuda clientes e barbeiros com informações e suporte 24/7.'
     },
     {
-      src: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'Relatórios e analytics'
+      icon: Shield,
+      title: 'Segurança Total',
+      description: 'Dados protegidos com criptografia e backup automático para total segurança.'
     },
     {
-      src: 'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'Chat WhatsApp integrado'
-    },
-    {
-      src: 'https://images.pexels.com/photos/3184357/pexels-photo-3184357.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'IA Assistente'
-    },
-    {
-      src: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=600',
-      alt: 'App mobile'
+      icon: TrendingUp,
+      title: 'Relatórios Avançados',
+      description: 'Analytics completos para acompanhar o crescimento e performance da sua barbearia.'
     }
   ];
 
   return (
-    <section id="gallery" className="py-12 sm:py-16 lg:py-20 bg-white">
+    <section id="gallery" className="py-16 sm:py-20 lg:py-24 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            Nossa <span className="text-yellow-400">Plataforma</span>
+        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            Funcionalidades <span className="text-yellow-400">Principais</span>
           </h2>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-4">
-            Conheça as principais funcionalidades da nossa plataforma 
-            e veja como ela pode transformar sua barbearia.
+          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto">
+            Descubra como nossa plataforma pode revolucionar a gestão da sua barbearia 
+            com tecnologia de ponta e facilidade de uso.
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {images.map((image, index) => (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
+          {features.map((feature, index) => (
             <div
               key={index}
-              className="group overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-center group"
             >
-              <img
-                src={image.src}
-                alt={image.alt}
-                className="w-full h-48 sm:h-56 lg:h-64 object-cover group-hover:scale-110 transition-transform duration-500"
-              />
+              <div className="bg-yellow-400 p-4 rounded-full w-16 h-16 mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <feature.icon className="h-8 w-8 text-black" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                {feature.title}
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                {feature.description}
+              </p>
             </div>
           ))}
+        </div>
+
+        <div className="text-center mt-12 sm:mt-16">
+          <button className="bg-yellow-400 text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-500 transition-colors shadow-lg">
+            Conhecer Todas as Funcionalidades
+          </button>
         </div>
       </div>
     </section>

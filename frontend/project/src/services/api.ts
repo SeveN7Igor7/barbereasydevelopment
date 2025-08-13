@@ -164,6 +164,51 @@ class ApiService {
     });
   }
 
+  async loginByTelefone(telefone: string): Promise<{
+    cliente: {
+      id: number;
+      nome: string;
+      telefone: string;
+      status: string;
+    };
+    barbearia: Barbearia;
+    agendamentos: {
+      ativos: Agendamento[];
+      historico: Agendamento[];
+      total: number;
+    };
+    estatisticas: {
+      totalAgendamentos: number;
+      agendamentosAtivos: number;
+      agendamentosFinalizados: number;
+      agendamentosCancelados: number;
+    };
+  }> {
+    return this.request<{
+      cliente: {
+        id: number;
+        nome: string;
+        telefone: string;
+        status: string;
+      };
+      barbearia: Barbearia;
+      agendamentos: {
+        ativos: Agendamento[];
+        historico: Agendamento[];
+        total: number;
+      };
+      estatisticas: {
+        totalAgendamentos: number;
+        agendamentosAtivos: number;
+        agendamentosFinalizados: number;
+        agendamentosCancelados: number;
+      };
+    }>('/clientes/login', {
+      method: 'POST',
+      body: JSON.stringify({ telefone }),
+    });
+  }
+
   async getClienteById(id: number): Promise<Cliente> {
     return this.request<Cliente>(`/clientes/${id}`);
   }
