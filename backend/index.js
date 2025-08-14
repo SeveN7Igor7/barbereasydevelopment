@@ -93,7 +93,7 @@ app.get('/', (req, res) => {
       'Logs Avançados'
     ],
     whatsapp: {
-      connected: whatsappService.isReady(),
+      connected: !!whatsappService.isReady(),
       features: [
         'Mensagens Automáticas',
         'Chat Interativo para Barbearias',
@@ -109,7 +109,7 @@ app.get('/', (req, res) => {
 // Rota para verificar status do WhatsApp
 app.get('/whatsapp/status', (req, res) => {
   const status = {
-    connected: whatsappService.isReady(),
+    connected: !!whatsappService.isReady(),
     message: whatsappService.isReady() ? 'WhatsApp conectado' : 'WhatsApp desconectado',
     features: [
       'Mensagens automáticas de boas-vindas',
@@ -193,7 +193,7 @@ async function startServer() {
       logger.info('Sistema de barbearia totalmente operacional!', {
         port,
         dashboardUrl: `http://localhost:${port}/dashboard`,
-        whatsappConnected: whatsappService.isReady(),
+        whatsappConnected: !!whatsappService.isReady(),
         features: [
           'API REST completa',
           'Controle de conflitos de agendamento',

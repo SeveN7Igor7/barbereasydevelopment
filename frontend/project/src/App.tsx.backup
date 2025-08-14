@@ -31,13 +31,6 @@ function App() {
         const barbearia = JSON.parse(barbeariaData);
         setBarbeariaLogada(barbearia);
         setIsLoggedIn(true);
-        
-        // Se estamos na página de dashboard, manter na página
-        const path = window.location.pathname;
-        if (path === '/barbershop' || path.includes('barbershop')) {
-          setCurrentPage('barbershop');
-          return;
-        }
       } catch (error) {
         console.error('Erro ao recuperar dados da barbearia:', error);
         localStorage.removeItem('barbeariaLogada');
@@ -48,32 +41,15 @@ function App() {
     checkForBookingUrl();
   }, []);
 
-  // Escutar mudanças na URL (para navegação do browser)
-  useEffect(() => {
-    const handlePopState = () => {
-      checkForBookingUrl();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
   const checkForBookingUrl = async () => {
     const path = window.location.pathname;
     
-    // Se a URL não é a raiz, pode ser um nomeUrl de barbearia ou página conhecida
+    // Se a URL não é a raiz, pode ser um nomeUrl de barbearia
     if (path !== '/' && path !== '') {
       const nomeUrl = path.substring(1); // Remove a barra inicial
       
-      // Verificar se é uma das páginas conhecidas
+      // Verificar se não é uma das páginas conhecidas
       const knownPages = ['barbershop', 'payment', 'register', 'login', 'client-booking'];
-      
-      if (knownPages.includes(nomeUrl)) {
-        setCurrentPage(nomeUrl);
-        return;
-      }
-      
-      // Se não é uma página conhecida, pode ser um nomeUrl de barbearia
       if (!knownPages.includes(nomeUrl)) {
         setLoading(true);
         setError(null);
@@ -90,9 +66,6 @@ function App() {
           setLoading(false);
         }
       }
-    } else {
-      // Se é a raiz, ir para home
-      setCurrentPage('home');
     }
   };
 
@@ -121,8 +94,6 @@ function App() {
   const handleBarbershopLogin = (barbearia: Barbearia) => {
     setIsLoggedIn(true);
     setBarbeariaLogada(barbearia);
-    setCurrentPage('barbershop');
-    window.history.pushState({}, '', '/barbershop');
   };
 
   const handleLogout = () => {

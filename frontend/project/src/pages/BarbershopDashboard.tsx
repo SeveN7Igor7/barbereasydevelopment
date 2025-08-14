@@ -242,10 +242,17 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
               <div className="flex items-center">
                 {barbearia.logoUrl ? (
                   <img
-                    src={`http://localhost:3000${barbearia.logoUrl}`}
-                    alt={`Logo ${barbearia.nome}`}
+                    src={(() => {
+                      const imageUrl = barbearia.logoUrl ? apiService.getLogoUrl(barbearia.id, barbearia.logoUrl) : 
+                                       (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000') + '/placeholder-logo.png'; // Fallback para uma imagem padrão
+                      console.log('Barbearia ID:', barbearia.id);
+                      console.log('Logo URL do backend (barbearia.logoUrl):', barbearia.logoUrl);
+                      console.log('URL completa da imagem (construída):', imageUrl);
+                      return imageUrl;
+                    })()}
                     className="h-12 w-12 rounded-lg object-cover mr-3"
                     onError={(e) => {
+                      console.error('Erro ao carregar imagem da logo:', e.currentTarget.src);
                       // Se a logo falhar ao carregar, mostrar ícone padrão
                       (e.target as HTMLImageElement).style.display = 'none';
                       const scissors = document.createElement('div');
@@ -396,17 +403,12 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                   type="date"
                   value={selectedDate.toISOString().split('T')[0]}
                   onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
                 />
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Agendamentos para {formatDate(selectedDate.toISOString())}
-                </h3>
-              </div>
               <div className="p-6">
                 {isLoading ? (
                   <div className="text-center py-8">
@@ -414,11 +416,14 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                     <p className="text-gray-600 mt-4">Carregando agendamentos...</p>
                   </div>
                 ) : agendamentosDodia.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">Nenhum agendamento para esta data</p>
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum agendamento para {formatDate(selectedDate)}</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {agendamentosDodia.map((agendamento) => (
-                      <div key={agendamento.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div key={agendamento.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
                             <User className="h-6 w-6 text-gray-600" />
@@ -431,33 +436,31 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                             <p className="text-sm text-gray-500">
                               {formatTime(agendamento.dataHora)} - {formatCurrency(agendamento.precoServico)}
                             </p>
-                            {agendamento.cliente?.telefone && (
-                              <p className="text-xs text-gray-400">
-                                Tel: {agendamento.cliente.telefone}
-                              </p>
-                            )}
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            {getStatusIcon(agendamento.status)}
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(agendamento.status)}`}>
+                              {getStatusText(agendamento.status)}
+                            </span>
+                          </div>
                           {agendamento.status === 'AGENDAMENTO_PROGRAMADO' && (
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => handleUpdateAgendamentoStatus(agendamento.id, 'ATENDIDO')}
-                                className="px-3 py-1 bg-green-100 text-green-800 rounded-lg text-xs hover:bg-green-200"
+                                className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
                               >
                                 Concluir
                               </button>
                               <button
                                 onClick={() => handleUpdateAgendamentoStatus(agendamento.id, 'CANCELADO')}
-                                className="px-3 py-1 bg-red-100 text-red-800 rounded-lg text-xs hover:bg-red-200"
+                                className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
                               >
                                 Cancelar
                               </button>
                             </div>
                           )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agendamento.status)}`}>
-                            {getStatusText(agendamento.status)}
-                          </span>
                         </div>
                       </div>
                     ))}
@@ -482,6 +485,41 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
               </button>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {barbeiros.map((barbeiro) => (
+                <div key={barbeiro.id} className="bg-white rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                      <User className="h-6 w-6 text-gray-600" />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditProfessional(barbeiro)}
+                        className="p-2 text-gray-600 hover:text-blue-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveProfessional(barbeiro.id)}
+                        className="p-2 text-gray-600 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-gray-900">{barbeiro.nome}</h3>
+                  <p className="text-sm text-gray-600">{barbeiro.especialidade}</p>
+                  <div className="mt-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      barbeiro.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {barbeiro.ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Modal Adicionar/Editar Profissional */}
             {showAddProfessional && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -489,34 +527,34 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                   <h3 className="text-lg font-semibold mb-4">
                     {editingProfessional ? 'Editar Profissional' : 'Adicionar Profissional'}
                   </h3>
-                  <form onSubmit={handleAddProfessional} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                      <input
-                        type="text"
-                        value={newProfessional.nome}
-                        onChange={(e) => setNewProfessional(prev => ({ ...prev, nome: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
-                        required
-                      />
+                  <form onSubmit={handleAddProfessional}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome
+                        </label>
+                        <input
+                          type="text"
+                          value={newProfessional.nome}
+                          onChange={(e) => setNewProfessional({ ...newProfessional, nome: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Especialidade
+                        </label>
+                        <input
+                          type="text"
+                          value={newProfessional.especialidade}
+                          onChange={(e) => setNewProfessional({ ...newProfessional, especialidade: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Especialidade</label>
-                      <input
-                        type="text"
-                        value={newProfessional.especialidade}
-                        onChange={(e) => setNewProfessional(prev => ({ ...prev, especialidade: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
-                        required
-                      />
-                    </div>
-                    <div className="flex space-x-3">
-                      <button
-                        type="submit"
-                        className="flex-1 bg-yellow-400 text-black py-2 rounded-lg hover:bg-yellow-500"
-                      >
-                        {editingProfessional ? 'Salvar' : 'Adicionar'}
-                      </button>
+                    <div className="flex justify-end space-x-3 mt-6">
                       <button
                         type="button"
                         onClick={() => {
@@ -524,63 +562,21 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                           setEditingProfessional(null);
                           setNewProfessional({ nome: '', especialidade: '' });
                         }}
-                        className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
                       >
                         Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500"
+                      >
+                        {editingProfessional ? 'Salvar' : 'Adicionar'}
                       </button>
                     </div>
                   </form>
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoading ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
-                  <p className="text-gray-600 mt-4">Carregando profissionais...</p>
-                </div>
-              ) : barbeiros.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">Nenhum profissional cadastrado</p>
-                </div>
-              ) : (
-                barbeiros.map((professional) => (
-                  <div key={professional.id} className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                        <User className="h-6 w-6 text-gray-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{professional.nome}</h3>
-                        <p className="text-sm text-gray-600">{professional.especialidade}</p>
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          professional.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {professional.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditProfessional(professional)}
-                        className="flex-1 flex items-center justify-center space-x-1 bg-blue-100 text-blue-800 py-2 rounded-lg hover:bg-blue-200"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span>Editar</span>
-                      </button>
-                      <button
-                        onClick={() => handleRemoveProfessional(professional.id)}
-                        className="flex-1 flex items-center justify-center space-x-1 bg-red-100 text-red-800 py-2 rounded-lg hover:bg-red-200"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Remover</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         )}
 
@@ -598,6 +594,35 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
               </button>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {servicos.map((servico) => (
+                <div key={servico.id} className="bg-white rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <Scissors className="h-8 w-8 text-yellow-400" />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditService(servico)}
+                        className="p-2 text-gray-600 hover:text-blue-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveService(servico.id)}
+                        className="p-2 text-gray-600 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-gray-900">{servico.nome}</h3>
+                  <p className="text-sm text-gray-600">{servico.duracaoMin} minutos</p>
+                  <p className="text-lg font-bold text-yellow-600 mt-2">
+                    {formatCurrency(servico.preco)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
             {/* Modal Adicionar/Editar Serviço */}
             {showAddService && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -605,47 +630,47 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                   <h3 className="text-lg font-semibold mb-4">
                     {editingService ? 'Editar Serviço' : 'Adicionar Serviço'}
                   </h3>
-                  <form onSubmit={handleAddService} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Serviço</label>
-                      <input
-                        type="text"
-                        value={newService.nome}
-                        onChange={(e) => setNewService(prev => ({ ...prev, nome: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
-                        required
-                      />
+                  <form onSubmit={handleAddService}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome do Serviço
+                        </label>
+                        <input
+                          type="text"
+                          value={newService.nome}
+                          onChange={(e) => setNewService({ ...newService, nome: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Duração (minutos)
+                        </label>
+                        <input
+                          type="number"
+                          value={newService.duracaoMin}
+                          onChange={(e) => setNewService({ ...newService, duracaoMin: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Preço (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newService.preco}
+                          onChange={(e) => setNewService({ ...newService, preco: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Duração (minutos)</label>
-                      <input
-                        type="number"
-                        value={newService.duracaoMin}
-                        onChange={(e) => setNewService(prev => ({ ...prev, duracaoMin: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
-                        required
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Preço (R$)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newService.preco}
-                        onChange={(e) => setNewService(prev => ({ ...prev, preco: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-yellow-400"
-                        required
-                        min="0"
-                      />
-                    </div>
-                    <div className="flex space-x-3">
-                      <button
-                        type="submit"
-                        className="flex-1 bg-yellow-400 text-black py-2 rounded-lg hover:bg-yellow-500"
-                      >
-                        {editingService ? 'Salvar' : 'Adicionar'}
-                      </button>
+                    <div className="flex justify-end space-x-3 mt-6">
                       <button
                         type="button"
                         onClick={() => {
@@ -653,56 +678,21 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
                           setEditingService(null);
                           setNewService({ nome: '', duracaoMin: '', preco: '' });
                         }}
-                        className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
                       >
                         Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500"
+                      >
+                        {editingService ? 'Salvar' : 'Adicionar'}
                       </button>
                     </div>
                   </form>
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoading ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
-                  <p className="text-gray-600 mt-4">Carregando serviços...</p>
-                </div>
-              ) : servicos.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">Nenhum serviço cadastrado</p>
-                </div>
-              ) : (
-                servicos.map((service) => (
-                  <div key={service.id} className="bg-white rounded-lg shadow p-6">
-                    <div className="mb-4">
-                      <h3 className="font-medium text-gray-900">{service.nome}</h3>
-                      <p className="text-sm text-gray-600">{service.duracaoMin} minutos</p>
-                      <p className="text-lg font-semibold text-yellow-600 mt-2">
-                        {formatCurrency(service.preco)}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditService(service)}
-                        className="flex-1 flex items-center justify-center space-x-1 bg-blue-100 text-blue-800 py-2 rounded-lg hover:bg-blue-200"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span>Editar</span>
-                      </button>
-                      <button
-                        onClick={() => handleRemoveService(service.id)}
-                        className="flex-1 flex items-center justify-center space-x-1 bg-red-100 text-red-800 py-2 rounded-lg hover:bg-red-200"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Remover</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         )}
 
@@ -711,112 +701,80 @@ const BarbershopDashboard: React.FC<BarbershopDashboardProps> = ({ onBack, onLog
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Configurações</h2>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações da Barbearia</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Barbearia</label>
-                  <input
-                    type="text"
-                    value={barbearia.nome}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Proprietário</label>
-                  <input
-                    type="text"
-                    value={barbearia.nomeProprietario}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={barbearia.email}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Plano</label>
-                  <input
-                    type="text"
-                    value={barbearia.plano}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  />
-                </div>
-                {barbearia.telefone && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Informações da Barbearia */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações da Barbearia</h3>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefone/WhatsApp</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                     <input
                       type="text"
-                      value={barbearia.telefone}
+                      value={barbearia.nome}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                     />
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Proprietário</label>
+                    <input
+                      type="text"
+                      value={barbearia.nomeProprietario}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={barbearia.email}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                    <input
+                      type="text"
+                      value={barbearia.telefone || 'Não informado'}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Estatísticas</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-blue-600">{agendamentos.length}</p>
-                  <p className="text-sm text-gray-600">Total de Agendamentos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-green-600">
-                    {agendamentos.filter(a => a.status === 'ATENDIDO').length}
-                  </p>
-                  <p className="text-sm text-gray-600">Agendamentos Concluídos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-yellow-600">
-                    {formatCurrency(
-                      agendamentos
-                        .filter(a => a.status === 'ATENDIDO')
-                        .reduce((total, a) => total + a.precoServico, 0)
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">Faturamento Total</p>
+              {/* Upload de Imagens */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Imagens</h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+                    <ImageUpload
+                      type="logo"
+                      barbeariaId={barbearia.id}
+                      currentImageUrl={barbearia.logoUrl}
+                      onUploadSuccess={refreshData}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Banner</label>
+                    <ImageUpload
+                      type="banner"
+                      barbeariaId={barbearia.id}
+                      currentImageUrl={barbearia.bannerUrl}
+                      onUploadSuccess={refreshData}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Horários de Funcionamento */}
-            <HorariosFuncionamento barbeariaId={barbearia.id} />
-
-            {/* Upload de Imagens */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ImageUpload
-                barbeariaId={barbearia.id}
-                type="logo"
-                currentImageUrl={barbearia.logoUrl ? apiService.getLogoUrl(barbearia.id) : undefined}
-                onUploadSuccess={(imageUrl) => {
-                  // Atualizar a barbearia com a nova URL da logo
-                  if (barbearia) {
-                    barbearia.logoUrl = imageUrl;
-                  }
-                }}
-              />
-              <ImageUpload
-                barbeariaId={barbearia.id}
-                type="banner"
-                currentImageUrl={barbearia.bannerUrl ? apiService.getBannerUrl(barbearia.id) : undefined}
-                onUploadSuccess={(imageUrl) => {
-                  // Atualizar a barbearia com a nova URL do banner
-                  if (barbearia) {
-                    barbearia.bannerUrl = imageUrl;
-                  }
-                }}
-              />
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Horários de Funcionamento</h3>
+              <HorariosFuncionamento barbeariaId={barbearia.id} />
             </div>
           </div>
         )}

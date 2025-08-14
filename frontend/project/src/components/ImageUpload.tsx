@@ -150,7 +150,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   // URL da imagem atual
-  const currentImage = preview || (currentImageUrl ? `http://localhost:3000${currentImageUrl}?t=${Date.now()}` : null);
+  const currentImage = preview || (currentImageUrl ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${currentImageUrl}?t=${Date.now()}` : null);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

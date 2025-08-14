@@ -118,13 +118,16 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
       }
 
       const allPossibleTimes: string[] = [];
-      const [startHour, startMinute] = horarioFuncionamento.horaInicio.split(':').map(Number);
-      const [endHour, endMinute] = horarioFuncionamento.horaFim.split(':').map(Number);
+      // Forçando o horário de funcionamento de 08:00 às 21:00 para geração de slots
+      const fixedStartHour = 8;
+      const fixedStartMinute = 0;
+      const fixedEndHour = 21;
+      const fixedEndMinute = 0;
 
-      let currentHour = startHour;
-      let currentMinute = startMinute;
+      let currentHour = fixedStartHour;
+      let currentMinute = fixedStartMinute;
 
-      while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+      while (currentHour < fixedEndHour || (currentHour === fixedEndHour && currentMinute < fixedEndMinute)) {
         const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
         allPossibleTimes.push(timeString);
 

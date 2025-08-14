@@ -359,7 +359,7 @@ class ApiService {
       const dataAgendamentos = agendamentos.filter(ag => 
         ag.barbeiroId === barbeiroId && 
         ag.dataHora.startsWith(data) && 
-        ag.status !== 'CANCELADO'
+        (ag.status === 'AGENDAMENTO_PROGRAMADO' || ag.status === 'AGENDAMENTO_CONFIRMADO')
       );
       
       const horariosOcupados = dataAgendamentos.map(ag => {
@@ -370,18 +370,7 @@ class ApiService {
         return hora;
       });
 
-      // Gerar horários disponíveis (9h às 18h, de 30 em 30 minutos)
-      const horariosDisponiveis: string[] = [];
-      for (let hora = 9; hora < 18; hora++) {
-        for (let minuto of [0, 30]) {
-          const horario = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
-          if (!horariosOcupados.includes(horario)) {
-            horariosDisponiveis.push(horario);
-          }
-        }
-      }
-
-      return horariosDisponiveis;
+      return horariosOcupados;
     } catch (error) {
       console.error('Erro ao verificar disponibilidade:', error);
       return [];
@@ -482,12 +471,12 @@ class ApiService {
   }
 
   // Métodos para obter URLs das imagens
-  getLogoUrl(barbeariaId: number): string {
-    return `${this.baseUrl}/barbearias/${barbeariaId}/images/logo`;
+  getLogoUrl(barbeariaId: number, logoUrl: string): string {
+    return `${this.baseUrl}${logoUrl}`;
   }
 
-  getBannerUrl(barbeariaId: number): string {
-    return `${this.baseUrl}/barbearias/${barbeariaId}/images/banner`;
+  getBannerUrl(barbeariaId: number, bannerUrl: string): string {
+    return `${this.baseUrl}${bannerUrl}`;
   }
 }
 

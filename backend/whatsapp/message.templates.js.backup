@@ -660,6 +660,10 @@ Entre em contato para mais informações!
     message += `---\n💈 *${barbeariaName}*`;
     return message;
   }
+}
+
+module.exports = MessageTemplates;
+
 
   // Template para confirmação de agendamento para o cliente
   static clientAppointmentConfirmed(clienteName, barbeariaName, serviceName, servicePrice, dateTime, barbeiroName) {
@@ -720,6 +724,7 @@ Um novo agendamento foi realizado:
 ---
 💈 _Sistema de Agendamentos_`;
   }
+
 }
 
 module.exports = MessageTemplates;
