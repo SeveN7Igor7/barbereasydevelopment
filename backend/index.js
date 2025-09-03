@@ -8,6 +8,8 @@ const agendamentoRoutes = require('./agendamento/agendamento.routes');
 const servicoRoutes = require('./servico/servico.routes');
 const barbeiroRoutes = require('./barbeiro/barbeiro.routes');
 const dashboardRoutes = require('./dashboard/dashboard.routes');
+const pagamentoRoutes = require('./pagamento/pagamento.routes');
+const webhookRoutes = require('./webhook/webhook.routes');
 const dashboardWebSocket = require('./dashboard/websocket');
 const whatsappService = require('./whatsapp/whatsapp.service');
 const logger = require('./utils/logger');
@@ -75,6 +77,12 @@ app.use('/barbeiros', barbeiroRoutes);
 
 // Usa as rotas do dashboard, prefixadas por /dashboard
 app.use('/dashboard', dashboardRoutes);
+
+// Usa as rotas de pagamento, prefixadas por /pagamentos
+app.use('/pagamentos', pagamentoRoutes);
+
+// Usa as rotas de webhook, prefixadas por /webhook
+app.use('/webhook', webhookRoutes);
 
 // Rota raiz para teste
 app.get('/', (req, res) => {

@@ -478,6 +478,74 @@ class ApiService {
   getBannerUrl(barbeariaId: number, bannerUrl: string): string {
     return `${this.baseUrl}${bannerUrl}`;
   }
+
+  // Métodos para pagamentos
+  async gerarPix(barbeariaId: number): Promise<{
+    message: string;
+    pagamento: {
+      id: number;
+      mercadoPagoId: string;
+      valor: number;
+      status: string;
+      qrCode?: string;
+      qrCodeBase64?: string;
+      pixCopyPaste?: string;
+    };
+  }> {
+    return this.request<{
+      message: string;
+      pagamento: {
+        id: number;
+        mercadoPagoId: string;
+        valor: number;
+        status: string;
+        qrCode?: string;
+        qrCodeBase64?: string;
+        pixCopyPaste?: string;
+      };
+    }>('/pagamentos/gerar-pix', {
+      method: 'POST',
+      body: JSON.stringify({ barbeariaId }),
+    });
+  }
+
+  async consultarPagamento(pagamentoId: number): Promise<{
+    pagamento: {
+      id: number;
+      mercadoPagoId: string;
+      valor: number;
+      status: string;
+      createdAt: string;
+    };
+  }> {
+    return this.request<{
+      pagamento: {
+        id: number;
+        mercadoPagoId: string;
+        valor: number;
+        status: string;
+        createdAt: string;
+      };
+    }>(`/pagamentos/${pagamentoId}`);
+  }
+
+  async getPagamentosByBarbearia(barbeariaId: number): Promise<{
+    id: number;
+    mercadoPagoId: string;
+    valor: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  }[]> {
+    return this.request<{
+      id: number;
+      mercadoPagoId: string;
+      valor: number;
+      status: string;
+      createdAt: string;
+      updatedAt: string;
+    }[]>(`/pagamentos/barbearia/${barbeariaId}`);
+  }
 }
 
 // Instância única do serviço
@@ -496,7 +564,13 @@ export const formatDate = (dateString: string): string => {
 };
 
 export const formatDateTime = (dateString: string): string => {
-  return new Date(dateString).toLocaleString('pt-BR');
+  return new Date(dateString).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 };
 
 export const formatTime = (dateString: string): string => {

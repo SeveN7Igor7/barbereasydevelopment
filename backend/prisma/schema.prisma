@@ -12,8 +12,10 @@ datasource db {
 
 enum PlanoTipo {
   TRIAL
+  STANDARD
   PAGO
   VITALICIO
+  CLOSED
 }
 
 enum DiaSemana {
@@ -37,6 +39,13 @@ enum StatusAgendamento {
   CANCELADO
 }
 
+enum StatusPagamento {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model Barbearia {
   id               Int      @id @default(autoincrement())
   nome             String
@@ -57,6 +66,7 @@ model Barbearia {
   servicos         Servico[]
   clientes         Cliente[]
   agendamentos     Agendamento[]
+  pagamentos       Pagamento[]
 }
 
 model Barbeiro {
@@ -129,4 +139,17 @@ model ConversaIA {
   sessao    String?  // JSON da sessão do usuário
   createdAt DateTime @default(now())
 }
+
+model Pagamento {
+  id            Int           @id @default(autoincrement())
+  barbeariaId   Int
+  mercadoPagoId String        @unique
+  valor         Float
+  status        StatusPagamento
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  barbearia     Barbearia     @relation(fields: [barbeariaId], references: [id])
+}
+
 

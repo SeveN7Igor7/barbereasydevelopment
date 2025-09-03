@@ -2,17 +2,34 @@ const { PrismaClient } = require('@prisma/client');
 const path = require('path');
 
 const logger = require('../utils/logger');
+const whatsappService = require('../whatsapp/whatsapp.service');
 const prisma = new PrismaClient();
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Função para formatar número de telefone para WhatsApp
+function formatPhoneForWhatsApp(telefone) {
+  if (!telefone) return null;
+  
+  // Remove todos os caracteres não numéricos
+  let cleanNumber = telefone.replace(/\D/g, '');
+  
+  // Se o número começa com 55 (Brasil) e tem 13 dígitos, remove o 9 após o DDD
+  if (cleanNumber.startsWith('55') && cleanNumber.length === 13) {
+    // Formato: 5589994624921 -> 558994624921
+    cleanNumber = cleanNumber.substring(0, 4) + cleanNumber.substring(5);
+  }
+  
+  return cleanNumber;
+}
+
 async function createBarbearia(req, res) {
   try {
-    const { nomeProprietario, nome, email, plano, senha, telefone } = req.body;
+    const { nomeProprietario, nome, email, senha, telefone } = req.body;
 
-    if (!nomeProprietario || !nome || !email || !plano || !senha) {
+    if (!nomeProprietario || !nome || !email || !senha) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
 
@@ -31,7 +48,7 @@ async function createBarbearia(req, res) {
         nomeProprietario,
         nome,
         email,
-        plano,
+        plano: 'CLOSED', // Sempre criar com plano CLOSED
         senha,
         nomeUrl,
         telefone: telefone || null,
@@ -45,11 +62,26 @@ async function createBarbearia(req, res) {
         nome,
         nomeProprietario,
         email,
-        plano,
+        plano: 'CLOSED',
         nomeUrl,
         telefone: barbearia.telefone,
       }
     });
+
+    // Enviar mensagem de WhatsApp após cadastro bem-sucedido
+    if (telefone) {
+      const formattedPhone = formatPhoneForWhatsApp(telefone);
+      if (formattedPhone) {
+        const mensagem = `🎉 *Cadastro realizado com sucesso!*\n\nOlá ${nomeProprietario}!\n\nSua barbearia *${nome}* foi cadastrada com sucesso em nossa plataforma!\n\n✅ *Próximo passo:*\nPara ativar todos os serviços, é necessário realizar o pagamento do plano.\n\n💳 Acesse seu dashboard para finalizar o pagamento e começar a usar todas as funcionalidades.\n\n📱 Em caso de dúvidas, estamos aqui para ajudar!`;
+        
+        try {
+          await whatsappService.sendMessage(formattedPhone, mensagem);
+          logger.info(`Mensagem de cadastro enviada para ${formattedPhone}`);
+        } catch (error) {
+          logger.error('Erro ao enviar mensagem de cadastro:', error);
+        }
+      }
+    }
   } catch (error) {
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'Email ou nomeUrl já cadastrado' });

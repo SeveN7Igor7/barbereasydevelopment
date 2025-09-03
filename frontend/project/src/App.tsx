@@ -194,8 +194,8 @@ function App() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Header onPageChange={handlePageChange} />
-      <Hero />
-      <Services />
+      <Hero onPageChange={handlePageChange} />
+      <Services onPageChange={handlePageChange} />
       <About />
       <Gallery />
       <Contact />

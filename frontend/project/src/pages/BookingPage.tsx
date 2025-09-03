@@ -48,46 +48,38 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
     return horariosMap;
   }, [barbearia.horarios, diaSemanaMap]);
 
-  // Gerar próximos 14 dias com base nos horários de funcionamento
+  // Função auxiliar para obter a data/hora atual no fuso horário de São Paulo
+  const getSaoPauloTime = () => {
+    const now = new Date();
+    const saoPauloOffset = -3; // UTC-3 para São Paulo
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * saoPauloOffset));
+  };
+
+  // Gerar próximos 30 dias úteis
   const generateAvailableDates = () => {
     const dates = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Zera a hora para comparação de data
-    let addedDays = 0;
-    let currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
+    const nowSaoPaulo = getSaoPauloTime();
+    const todaySaoPaulo = new Date(nowSaoPaulo.getFullYear(), nowSaoPaulo.getMonth(), nowSaoPaulo.getDate());
+    let currentDate = new Date(todaySaoPaulo);
+    let daysAdded = 0;
 
-    while (addedDays < 14) {
+    while (daysAdded < 30) { // Gerar 30 dias úteis futuros
       const dayOfWeek = currentDate.getDay();
-      const isToday = currentDate.getTime() === today.getTime();
-      const isPastDay = currentDate.getTime() < today.getTime();
+      const isWorkingDay = barbeariaHorarios.has(dayOfWeek);
 
-      // Verifica se a barbearia funciona neste dia da semana
-      if (barbeariaHorarios.has(dayOfWeek)) {
+      if (isWorkingDay) {
         dates.push({
           date: currentDate.toISOString().split('T')[0],
           dayName: dayNames[dayOfWeek],
           dayNumber: currentDate.getDate(),
           month: monthNames[currentDate.getMonth()],
-          isToday: isToday,
-          isPastDay: isPastDay,
+          isToday: currentDate.getTime() === todaySaoPaulo.getTime(),
+          isPastDay: currentDate.getTime() < todaySaoPaulo.getTime(),
           fullDate: new Date(currentDate),
           isWorkingDay: true,
         });
-        addedDays++;
-      } else {
-        // Adiciona dias não trabalhados para preencher o calendário, mas desabilitados
-        dates.push({
-          date: currentDate.toISOString().split('T')[0],
-          dayName: dayNames[dayOfWeek],
-          dayNumber: currentDate.getDate(),
-          month: monthNames[currentDate.getMonth()],
-          isToday: isToday,
-          isPastDay: isPastDay,
-          fullDate: new Date(currentDate),
-          isWorkingDay: false,
-        });
-        // Não incrementa addedDays para dias não trabalhados, buscando o próximo dia útil
+        daysAdded++;
       }
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -107,8 +99,11 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
     if (!selectedDate || !selectedBarber) return;
     
     setLoading(true);
+    setError(null);
+    
     try {
-      const dayOfWeek = new Date(selectedDate).getDay();
+      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+      const dayOfWeek = selectedDateObj.getDay();
       const horarioFuncionamento = barbeariaHorarios.get(dayOfWeek);
 
       if (!horarioFuncionamento) {
@@ -117,17 +112,14 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
         return;
       }
 
+      const [startHour, startMinute] = horarioFuncionamento.horaInicio.split(':').map(Number);
+      const [endHour, endMinute] = horarioFuncionamento.horaFim.split(':').map(Number);
+
       const allPossibleTimes: string[] = [];
-      // Forçando o horário de funcionamento de 08:00 às 21:00 para geração de slots
-      const fixedStartHour = 8;
-      const fixedStartMinute = 0;
-      const fixedEndHour = 21;
-      const fixedEndMinute = 0;
+      let currentHour = startHour;
+      let currentMinute = startMinute;
 
-      let currentHour = fixedStartHour;
-      let currentMinute = fixedStartMinute;
-
-      while (currentHour < fixedEndHour || (currentHour === fixedEndHour && currentMinute < fixedEndMinute)) {
+      while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
         const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
         allPossibleTimes.push(timeString);
 
@@ -140,30 +132,33 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
 
       const bookedTimes = await apiService.checkAvailability(barbearia.id, selectedBarber.id, selectedDate);
       
-      // Filtrar horários já ocupados e horários passados (se for hoje)
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const nowSaoPaulo = getSaoPauloTime();
+      const todaySaoPauloISO = new Date(nowSaoPaulo.getFullYear(), nowSaoPaulo.getMonth(), nowSaoPaulo.getDate()).toISOString().split('T')[0];
 
       const filteredTimes = allPossibleTimes.filter(time => {
         const isBooked = bookedTimes.includes(time);
-        if (selectedDate === today) {
+        
+        if (selectedDate === todaySaoPauloISO) {
           const [hour, minute] = time.split(':').map(Number);
-          const slotTime = new Date();
-          slotTime.setHours(hour, minute, 0, 0);
-          return !isBooked && slotTime > now;
+          const slotDateTime = new Date(nowSaoPaulo.getFullYear(), nowSaoPaulo.getMonth(), nowSaoPaulo.getDate(), hour, minute, 0, 0);
+          const thirtyMinutesFromNow = new Date(nowSaoPaulo.getTime() + (30 * 60 * 1000));
+
+          return !isBooked && slotDateTime.getTime() > thirtyMinutesFromNow.getTime();
+        } else if (new Date(selectedDate) < new Date(todaySaoPauloISO)) {
+          return false; // Não mostrar horários para dias passados
         }
+        
         return !isBooked;
       });
 
       setAvailableTimes(filteredTimes);
+      
       if (filteredTimes.length === 0) {
         setError('Nenhum horário disponível para esta data e barbeiro.');
-      } else {
-        setError(null);
       }
     } catch (error) {
       console.error('Erro ao carregar horários:', error);
-      setError('Erro ao carregar horários disponíveis.');
+      setError('Erro ao carregar horários disponíveis. Tente novamente.');
       setAvailableTimes([]);
     } finally {
       setLoading(false);
@@ -171,9 +166,10 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
   };
 
   const handleDateSelect = (date: string, isWorkingDay: boolean) => {
-    if (!isWorkingDay) return; // Não permite selecionar dias não trabalhados
+    if (!isWorkingDay) return;
     setSelectedDate(date);
-    setSelectedTime(''); // Reset time when date changes
+    setSelectedTime(''); 
+    setError(null);
     setCurrentStep('service');
   };
 
@@ -184,7 +180,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
 
   const handleBarberSelect = (barbeiro: Barbeiro) => {
     setSelectedBarber(barbeiro);
-    setSelectedTime(''); // Reset time when barber changes
+    setSelectedTime(''); 
     setCurrentStep('time');
   };
 
@@ -244,6 +240,35 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
     } finally {
       setIsCreatingBooking(false);
     }
+  };
+
+  const handleGoBack = () => {
+    switch (currentStep) {
+      case 'service':
+        setCurrentStep('date');
+        setSelectedService(null);
+        break;
+      case 'barber':
+        setCurrentStep('service');
+        setSelectedBarber(null);
+        break;
+      case 'time':
+        setCurrentStep('barber');
+        setSelectedTime('');
+        break;
+      case 'summary':
+        setCurrentStep('time');
+        break;
+      case 'client':
+        setCurrentStep('summary');
+        setClientName('');
+        setClientPhone('');
+        break;
+      default:
+        onBack(); // Volta para a página anterior se estiver na primeira etapa
+        break;
+    }
+    setError(null); // Limpa erros ao voltar
   };
 
   const renderStepIndicator = () => {
@@ -320,9 +345,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><MapPin className="h-4 w-4 mr-2"/> Endereço:</h4>
-          <p className="text-sm text-gray-600">{barbearia.nomeProprietario} (Endereço Fictício)</p>
-          <h4 className="font-semibold text-gray-800 mb-2 flex items-center mt-4"><Phone className="h-4 w-4 mr-2"/> Contato:</h4>
+          <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><Phone className="h-4 w-4 mr-2"/> Contato:</h4>
           <p className="text-sm text-gray-600">{barbearia.telefone || 'Não informado'}</p>
         </div>
       </div>
@@ -340,7 +363,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
           <button
             key={date.date}
             onClick={() => handleDateSelect(date.date, date.isWorkingDay)}
-            disabled={!date.isWorkingDay || date.isPastDay} // Desabilita dias não trabalhados e dias passados
+            disabled={!date.isWorkingDay || date.isPastDay}
             className={`p-3 rounded-lg text-center transition-colors flex flex-col items-center justify-center ${
               selectedDate === date.date
                 ? 'bg-yellow-400 text-black' : !date.isWorkingDay || date.isPastDay
@@ -352,9 +375,6 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
             <div className="text-xs">{date.month}</div>
             {date.isToday && (
               <div className="text-xs text-yellow-600 font-medium">Hoje</div>
-            )}
-            {!date.isWorkingDay && (
-              <div className="text-xs text-red-500 font-medium">Fechado</div>
             )}
           </button>
         ))}
@@ -422,9 +442,10 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-gray-900">{barbeiro.nome}</h4>
-                {barbeiro.especialidade && (
-                  <p className="text-sm text-gray-600">{barbeiro.especialidade}</p>
-                )}
+                <div className="flex items-center mt-1">
+                  <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                  <span className="text-sm text-gray-600">4.8 (120 avaliações)</span>
+                </div>
               </div>
             </div>
           </button>
@@ -439,22 +460,21 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
         <Clock className="h-5 w-5 text-yellow-400" />
         <span>Escolha o Horário</span>
       </h3>
-      {loading ? (
+      
+      {loading && (
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto"></div>
-          <p className="mt-2 text-gray-500">Carregando horários...</p>
+          <p className="text-gray-600 mt-2">Carregando horários disponíveis...</p>
         </div>
-      ) : availableTimes.length === 0 ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-red-600 text-sm flex items-center"><Info className="h-4 w-4 mr-2"/>{error || 'Nenhum horário disponível para esta data e barbeiro.'}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+      )}
+
+      {!loading && availableTimes.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
           {availableTimes.map((time) => (
             <button
               key={time}
               onClick={() => handleTimeSelect(time)}
-              className={`p-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`p-3 rounded-lg text-center transition-colors ${
                 selectedTime === time
                   ? 'bg-yellow-400 text-black'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
@@ -465,59 +485,62 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
           ))}
         </div>
       )}
+
+      {!loading && availableTimes.length === 0 && (
+        <div className="text-center py-8">
+          <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">Nenhum horário disponível</p>
+          <p className="text-sm text-gray-500 mt-2">Tente selecionar outro barbeiro ou data</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+          <p className="text-red-600 text-sm flex items-center"><Info className="h-4 w-4 mr-2"/>{error}</p>
+        </div>
+      )}
     </div>
   );
 
-  const renderSummary = () => {
-    const selectedDateData = availableDates.find(d => d.date === selectedDate);
-    
-    return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Agendamento</h3>
-        
-        <div className="space-y-4 mb-6">
-          <div className="flex justify-between flex-wrap">
-            <span className="text-gray-600">Barbearia:</span>
-            <span className="font-medium text-right">{barbearia.nome}</span>
-          </div>
-          <div className="flex justify-between flex-wrap">
-            <span className="text-gray-600">Data:</span>
-            <span className="font-medium text-right">
-              {selectedDateData ? 
-                `${selectedDateData.dayName}, ${selectedDateData.dayNumber} de ${selectedDateData.month}` 
-                : 'Não selecionada'
-              }
-            </span>
-          </div>
-          <div className="flex justify-between flex-wrap">
-            <span className="text-gray-600">Horário:</span>
-            <span className="font-medium text-right">{selectedTime || 'Não selecionado'}</span>
-          </div>
-          <div className="flex justify-between flex-wrap">
-            <span className="text-gray-600">Serviço:</span>
-            <span className="font-medium text-right">{selectedService?.nome || 'Não selecionado'}</span>
-          </div>
-          <div className="flex justify-between flex-wrap">
-            <span className="text-gray-600">Barbeiro:</span>
-            <span className="font-medium text-right">{selectedBarber?.nome || 'Não selecionado'}</span>
-          </div>
-          <div className="flex justify-between border-t pt-4 mt-4">
-            <span className="text-gray-600 text-lg">Valor Total:</span>
-            <span className="font-bold text-xl text-yellow-600">
-              {selectedService ? formatCurrency(selectedService.preco) : 'R$ 0,00'}
-            </span>
-          </div>
+  const renderSummary = () => (
+    <div className="bg-white rounded-lg shadow-sm border p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo do Agendamento</h3>
+      
+      <div className="space-y-4 mb-6">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Data:</span>
+          <span className="font-medium text-right">
+            {selectedDate && availableDates.find(d => d.date === selectedDate)?.dayName}, {selectedDate && availableDates.find(d => d.date === selectedDate)?.dayNumber} de {selectedDate && availableDates.find(d => d.date === selectedDate)?.month}
+          </span>
         </div>
-        
-        <button
-          onClick={handleConfirmBooking}
-          className="w-full bg-yellow-400 text-black py-4 rounded-lg font-bold text-lg hover:bg-yellow-500 transition-colors"
-        >
-          Confirmar Agendamento
-        </button>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Horário:</span>
+          <span className="font-medium text-right">{selectedTime || 'Não selecionado'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Serviço:</span>
+          <span className="font-medium text-right">{selectedService?.nome || 'Não selecionado'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Barbeiro:</span>
+          <span className="font-medium text-right">{selectedBarber?.nome || 'Não selecionado'}</span>
+        </div>
+        <div className="flex justify-between border-t pt-4 mt-4">
+          <span className="text-gray-600 text-lg">Valor Total:</span>
+          <span className="font-bold text-xl text-yellow-600">
+            {selectedService ? formatCurrency(selectedService.preco) : 'R$ 0,00'}
+          </span>
+        </div>
       </div>
-    );
-  };
+      
+      <button
+        onClick={handleConfirmBooking}
+        className="w-full bg-yellow-400 text-black py-4 rounded-lg font-bold text-lg hover:bg-yellow-500 transition-colors"
+      >
+        Confirmar Agendamento
+      </button>
+    </div>
+  );
 
   const renderClientForm = () => (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -550,7 +573,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
             onChange={(e) => setClientPhone(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-yellow-400 focus:border-yellow-400"
             placeholder="Ex: 89994582600 (apenas números)"
-            pattern="[0-9]{11}" // Validação básica para 11 dígitos (DDD + 9 dígitos)
+            pattern="[0-9]{11}"
             title="Por favor, insira um número de telefone válido com DDD (11 dígitos)."
             required
           />
@@ -603,17 +626,19 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 flex flex-col items-center">
       <div className="w-full max-w-4xl">
-        <button
-          onClick={onBack}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Voltar
-        </button>
-
         {renderBarbershopInfo()}
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          {currentStep !== 'confirmation' && (
+            <button
+              onClick={handleGoBack}
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              Voltar
+            </button>
+          )}
+
           {renderStepIndicator()}
 
           {currentStep === 'date' && renderDateSelection()}
@@ -630,5 +655,4 @@ const BookingPage: React.FC<BookingPageProps> = ({ onBack, barbearia }) => {
 };
 
 export default BookingPage;
-
 

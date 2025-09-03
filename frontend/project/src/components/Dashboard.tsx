@@ -16,10 +16,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
       description: 'Acesso para barbearias contratantes'
     },
     {
-      id: 'payment',
+      id: 'register',
       name: 'Quero contar com seus serviços',
       icon: <CreditCard className="h-4 w-4" />,
-      description: 'Contratar nossos serviços'
+      description: 'Cadastrar minha barbearia'
     },
     {
       id: 'login',
@@ -75,3 +75,4 @@ const Dashboard: React.FC<DashboardProps> = ({ onPageChange }) => {
 };
 
 export default Dashboard;
+
